@@ -1,0 +1,45 @@
+name: Discover
+
+on:
+  workflow_call:
+    outputs:
+      modules:
+        description: "JSON array of discovered module names"
+        value: ${{ jobs.discover.outputs.modules }}
+      examples:
+        description: "JSON array of discovered example names"
+        value: ${{ jobs.discover.outputs.examples }}
+
+jobs:
+  discover:
+    name: Discover Modules and Examples
+    runs-on: ubuntu-latest
+    outputs:
+      modules: ${{ steps.set-matrix.outputs.modules }}
+      examples: ${{ steps.set-matrix.outputs.examples }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Set Matrix
+      id: set-matrix
+      run: |
+        # Discover modules (only if modules directory exists)
+        if [ -d "modules" ]; then
+          modules=$(find modules -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | jq -R -s -c 'split("\n")[:-1]')
+          echo "modules=$modules" >> $GITHUB_OUTPUT
+          echo "Discovered modules: $modules"
+        else
+          echo "modules=[]" >> $GITHUB_OUTPUT
+          echo "No modules directory found"
+        fi
+
+        # Discover examples (only if examples directory exists)
+        if [ -d "examples" ]; then
+          examples=$(find examples -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | jq -R -s -c 'split("\n")[:-1]')
+          echo "examples=$examples" >> $GITHUB_OUTPUT
+          echo "Discovered examples: $examples"
+        else
+          echo "examples=[]" >> $GITHUB_OUTPUT
+          echo "No examples directory found"
+        fi

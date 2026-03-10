@@ -1,0 +1,30 @@
+# Configuration for probot-no-response - https://github.com/probot/no-response
+
+# Number of days of inactivity before a Issue is closed for lack of response
+daysUntilClose: 14
+
+# Label requiring a response
+responseRequiredLabel: waiting-for-response
+
+# Comment to post when closing an Issue for lack of response. Set to `false` to disable
+closeComment: >
+  This issue has been automatically closed because there has been no response
+  to our request for more information from the original author. With only the
+  information that is currently in the issue, we don't have enough information
+  to take action. Please reach out if you have or find the answers we need so
+  that we can investigate further.
+
+  You can reopen this issue at any time by providing the requested information.
+
+# Comment to post when an Issue is first marked as requiring a response. Set to `false` to disable
+responseRequiredComment: >
+  Hello! We need more information to help resolve this issue.
+
+  This issue has been labeled as `waiting-for-response` because we need more information
+  to understand and address your concern. Please provide the requested details when you
+  have a chance.
+
+  If we don't receive a response within **{daysUntilClose} days**, this issue will be
+  automatically closed. You can always reopen it later by providing the needed information.
+
+  Thank you for your patience! 🙏

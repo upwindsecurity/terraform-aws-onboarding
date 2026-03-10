@@ -1,0 +1,155 @@
+{
+  "branches": [
+    "main"
+  ],
+  "plugins": [
+    [
+      "@semantic-release/commit-analyzer",
+      {
+        "parserOpts": {
+          "noteKeywords": [
+            "BREAKING CHANGE",
+            "BREAKING CHANGES",
+            "BREAKING"
+          ]
+        },
+        "preset": "conventionalcommits",
+        "releaseRules": [
+          {
+            "release": "patch",
+            "type": "chore",
+            "scope": "deps"
+          },
+          {
+            "release": "minor",
+            "type": "feat"
+          },
+          {
+            "release": "minor",
+            "type": "feature"
+          },
+          {
+            "release": "patch",
+            "type": "fix"
+          },
+          {
+            "release": "patch",
+            "type": "hotfix"
+          },
+          {
+            "release": "patch",
+            "type": "docs"
+          },
+          {
+            "release": "minor",
+            "type": "style"
+          },
+          {
+            "release": "patch",
+            "type": "refactor"
+          },
+          {
+            "release": "minor",
+            "type": "perf"
+          },
+          {
+            "release": "minor",
+            "type": "performance"
+          },
+          {
+            "release": "patch",
+            "type": "revert"
+          },
+          {
+            "release": "minor",
+            "type": "deprecate"
+          },
+          {
+            "breaking": true,
+            "release": "major"
+          }
+        ]
+      }
+    ],
+    [
+      "@semantic-release/release-notes-generator",
+      {
+        "preset": "conventionalcommits",
+        "presetConfig": {
+          "types": [
+            {
+              "section": "Features",
+              "type": "feat"
+            },
+            {
+              "section": "Bug Fixes",
+              "type": "fix"
+            },
+            {
+              "section": "Performance Improvements",
+              "type": "perf"
+            },
+            {
+              "section": "Reverts",
+              "type": "revert"
+            },
+            {
+              "section": "Documentation",
+              "type": "docs"
+            },
+            {
+              "hidden": true,
+              "section": "Styles",
+              "type": "style"
+            },
+            {
+              "section": "Code Refactoring",
+              "type": "refactor"
+            },
+            {
+              "hidden": true,
+              "section": "Tests",
+              "type": "test"
+            },
+            {
+              "hidden": true,
+              "section": "Build System",
+              "type": "build"
+            },
+            {
+              "hidden": true,
+              "section": "Continuous Integration",
+              "type": "ci"
+            },
+            {
+              "hidden": true,
+              "section": "Chores",
+              "type": "chore"
+            }
+          ]
+        }
+      }
+    ],
+    [
+      "@semantic-release/changelog",
+      {
+        "changelogFile": "CHANGELOG.md",
+        "changelogTitle": "# Changelog\n\nAll notable changes to this project will be documented in this file.\n\nThe format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),\nand this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).\n"
+      }
+    ],
+    [
+      "@semantic-release/github",
+      {
+        "assets": [
+          {
+            "label": "Changelog",
+            "path": "CHANGELOG.md"
+          }
+        ],
+        "draftRelease": true,
+        "failTitle": false,
+        "successComment": false
+      }
+    ]
+  ]
+}

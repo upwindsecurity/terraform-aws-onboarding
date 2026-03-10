@@ -1,0 +1,28 @@
+# Example direnv configuration file
+# Copy this file to .envrc and customize for your environment
+# Run 'direnv allow' after creating .envrc to enable it
+
+# Terraform Configuration
+export TF_VAR_environment=dev
+export TF_LOG=INFO
+export TF_LOG_PATH=./terraform.log
+
+# Local development workspace settings
+# TF_WORKSPACE: Use dedicated workspace for local development
+# This creates state files in terraform.tfstate.d/$TF_WORKSPACE/ instead of default
+export TF_WORKSPACE=local-dev
+
+# AWS Configuration
+export AWS_PROFILE=your-profile-name
+export AWS_REGION=us-west-2
+export AWS_DEFAULT_REGION=us-west-2
+
+# Module-specific variables
+export TF_VAR_bucket_name=my-unique-bucket-name
+export TF_VAR_enable_versioning=true
+export TF_VAR_enable_encryption=true
+export TF_VAR_kms_key_id=arn:aws:kms:us-west-2:123456789012:key/12345678-1234-1234-1234-123456789012
+
+# Development tools
+export TFLINT_LOG=info
+export CHECKOV_LOG_LEVEL=INFO

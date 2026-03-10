@@ -1,0 +1,177 @@
+# Configuration for Behaviorbot - https://github.com/behaviorbot/config
+
+# Welcome new contributors
+newContributors:
+  # Welcome message for new contributors
+  newIssueWelcomeComment: >
+    Thanks for opening your first issue here! 🎉
+
+    Please make sure you've provided:
+    - Terraform version
+    - Provider versions
+    - Steps to reproduce (if it's a bug)
+    - Expected vs actual behavior
+
+    A maintainer will review your issue soon.
+
+  newPRWelcomeComment: >
+    Thanks for opening your first pull request! 🚀
+
+    Please make sure:
+    - [ ] You've read our [contributing guidelines](CONTRIBUTING.md)
+    - [ ] Tests pass (`make test`)
+    - [ ] Documentation is updated if needed
+    - [ ] Commit messages follow [conventional commits](https://conventionalcommits.org/)
+
+    A maintainer will review your PR soon.
+
+# Request reviewer for PRs
+requestInfoReplyComment: >
+  We would appreciate it if you could provide us with more info about this issue/pr!
+
+# Auto-assign issues and PRs
+autoAssign:
+  # Auto-assign reviewers to PRs
+  pullRequests:
+    # Enable auto-assignment for PRs
+    enabled: true
+    # Number of reviewers to assign
+    reviewers: 1
+    # Assign from these users (replace with actual maintainer usernames)
+    fromUsers:
+      - maintainer1
+      - maintainer2
+    # Skip if draft PR
+    skipDrafts: true
+
+  # Auto-assign issues
+  issues:
+    enabled: false
+
+# Sentiment bot - close toxic issues
+sentimentBot:
+  emotionallyCharged: close
+  sentiment:
+    threshold: 0.5
+
+# Auto-label based on file changes
+autoLabeler:
+  # Label PRs based on changed files
+  rules:
+    # Documentation changes
+    - label: "documentation"
+      files:
+        - "*.md"
+        - "docs/**/*"
+
+    # Terraform code changes
+    - label: "terraform"
+      files:
+        - "*.tf"
+        - "*.tfvars"
+        - "modules/**/*.tf"
+
+    # CI/CD changes
+    - label: "ci/cd"
+      files:
+        - ".github/**/*"
+        - "Makefile"
+
+    # Configuration changes
+    - label: "configuration"
+      files:
+        - ".config/**/*"
+        - "*.yml"
+        - "*.yaml"
+        - "*.json"
+
+    # Examples changes
+    - label: "examples"
+      files:
+        - "examples/**/*"
+
+    # Dependencies
+    - label: "dependencies"
+      files:
+        - "versions.tf"
+        - ".terraform.lock.hcl"
+
+# First-timer-only issues
+firstTimersOnly:
+  # Label to identify first-timer-only issues
+  label: "good first issue"
+  # Template for first-timer-only issues
+  template: >
+    Thanks for your interest in contributing! This is a great first issue.
+
+    If you'd like to work on this, please comment below and we'll help guide you through the process.
+
+    See our [contributing guide](CONTRIBUTING.md) for more information.
+
+# Auto-close feature requests that should be discussions
+autoCloseFeatureRequests:
+  # Enable auto-close for feature requests
+  enabled: true
+  # Close issues with these labels after specified days
+  closeComment: >
+    This feature request has been automatically closed. Please consider opening a
+    [discussion](../../discussions) instead for feature requests and questions.
+
+    If this is a bug report, please reopen with more details.
+
+# Todo check - ensure TODOs are tracked
+todoCheck:
+  # Check for TODO comments in code
+  keyword: ["TODO", "FIXME", "HACK"]
+
+# Branch protection suggestions
+branchProtection:
+  # Suggest branch protection rules
+  enabled: true
+  restrictions:
+    required_status_checks:
+      strict: true
+      contexts:
+        - "ci/terraform-checks"
+        - "ci/tflint"
+        - "ci/docs"
+
+# Performance label for large PRs
+performanceLabel:
+  # Threshold for large PRs (number of lines changed)
+  threshold: 500
+  # Label to apply
+  label: "large-pr"
+  # Comment to add
+  comment: >
+    This is a large PR. Please consider breaking it into smaller, focused changes for easier review.
+
+# Stale PR reminder
+stalePRReminder:
+  # Days after which to remind about stale PRs
+  days: 14
+  # Comment to add
+  comment: >
+    This PR has been open for {{days}} days. Please rebase on the latest main branch
+    and resolve any conflicts if you'd like to continue with this contribution.
+
+# Auto-merge dependabot PRs for patch updates
+dependabotAutoMerge:
+  # Enable auto-merge for dependabot PRs
+  enabled: true
+  # Only auto-merge patch updates
+  updateTypes:
+    - "patch"
+  # Require these checks to pass
+  requiredChecks:
+    - "ci"
+    - "security"
+
+# Welcome message for new stargazers
+starWelcome:
+  # Thank users for starring
+  enabled: true
+  comment: >
+    Thanks for starring this repository! ⭐
+
+    If you find any issues or have suggestions, please don't hesitate to open an issue.
