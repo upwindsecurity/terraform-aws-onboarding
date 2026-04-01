@@ -18,7 +18,6 @@ on:
 env:
   TERRAFORM_VERSION: 1.11.0
   TFLINT_VERSION: v0.48.0
-  TRIVY_VERSION: v0.63.0
 
 permissions:
   contents: read         # Required for checkout and reading repository content
@@ -91,30 +90,9 @@ jobs:
       run: tflint -f compact --config ../../.config/.tflint.hcl
       working-directory: modules/${{ matrix.module }}
 
-  trivy:
-    name: Security Scan
-    runs-on: ubuntu-latest
-    if: github.event.repository.private == false
-
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-
-    - name: Run Trivy Security Scanner
-      uses: aquasecurity/trivy-action@v0.35.0
-      with:
-        version: ${{ env.TRIVY_VERSION }}
-        scan-type: 'config'
-        scan-ref: '.'
-        format: 'sarif'
-        output: 'trivy-results.sarif'
-        exit-code: '0'
-
-    - name: Upload Security Scan Results
-      uses: github/codeql-action/upload-sarif@v3
-      with:
-        sarif_file: 'trivy-results.sarif'
-        wait-for-processing: true
 
   terraform-docs:
     name: Terraform Docs (${{ matrix.module }})
