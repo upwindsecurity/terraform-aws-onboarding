@@ -40,7 +40,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3
@@ -68,7 +68,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Cache TFLint Plugin Directory
       uses: actions/cache@v3
@@ -98,7 +98,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Run Trivy Security Scanner
       uses: aquasecurity/trivy-action@v0.35.0
@@ -127,7 +127,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Run Terraform Docs
       uses: terraform-docs/gh-actions@v1.4.1
@@ -166,7 +166,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3
