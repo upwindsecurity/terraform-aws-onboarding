@@ -33,7 +33,7 @@ We welcome contributions! Please see our [CONTRIBUTING.md](./CONTRIBUTING.md) gu
 For bug reports and feature requests, please use
 [GitHub Issues](https://github.com/upwindsecurity/terraform-module/issues).
 
-## Versioning
+## Versioning ##
 
 We use [Semantic Versioning](http://semver.org/) for releases. For the versions
 available, see the [tags on this repository](https://github.com/upwindsecurity/terraform-module/tags).
@@ -47,3 +47,4 @@ This project is licensed under the Apache License 2.0. See the [LICENSE](LICENSE
 - [Documentation](https://docs.upwind.io)
 - [Issues](https://github.com/upwindsecurity/terraform-module/issues)
 - [Contributing Guide](./CONTRIBUTING.md)
+
