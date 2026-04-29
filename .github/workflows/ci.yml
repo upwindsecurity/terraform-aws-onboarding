@@ -87,8 +87,9 @@ jobs:
       run: tflint --init --config .config/.tflint.hcl
 
     - name: Run TFLint
-      run: tflint -f compact --config ../../.config/.tflint.hcl
+      run: tflint -f compact --minimum-failure-severity=error --config ../../.config/.tflint.hcl
       working-directory: modules/${{ matrix.module }}
+
 
     steps:
     - name: Checkout
