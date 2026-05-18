@@ -280,7 +280,16 @@ variable "upwind_org_register_auth_secret_arn" {
   description = "The ARN of a secret containing the org registration secret."
   type        = string
   default     = null
+
+  validation {
+    condition = (
+      var.upwind_org_register_auth_secret_arn == null ||
+      can(regex("^arn:aws:secretsmanager:[a-z]{2}-[a-z]+-\\d:[0-9]{12}:secret:[a-zA-Z0-9_./-]+-[a-zA-Z0-9]+$", var.upwind_org_register_auth_secret_arn))
+    )
+    error_message = "The secret ARN must be a valid AWS Secrets Manager ARN."
+  }
 }
+
 
 variable "upwind_auth_endpoint" {
   description = "The Authentication API endpoint."

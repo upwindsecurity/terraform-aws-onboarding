@@ -94,8 +94,8 @@ resource "aws_iam_role_policy" "account_service_view_access_policy" {
           Sid    = "AccessAmazonQ"
           Effect = "Allow"
           Action = [
-            "qbusiness:ListApplications",
-            "qbusiness:GetApplication"
+            "qbusiness:List*",
+            "qbusiness:Get*"
           ]
           Resource = "*"
         },
@@ -103,12 +103,9 @@ resource "aws_iam_role_policy" "account_service_view_access_policy" {
           Sid    = "AccessSagemaker"
           Effect = "Allow"
           Action = [
-            "sagemaker:ListEndpoints",
-            "sagemaker:DescribeEndpoint",
-            "sagemaker:ListEndpointConfigs",
-            "sagemaker:DescribeEndpointConfig",
-            "sagemaker:ListModels",
-            "sagemaker:DescribeModel"
+            "sagemaker:Describe*",
+            "sagemaker:List*",
+            "sagemaker:BatchDescribeModelPackage"
           ]
           Resource = "*"
         },
