@@ -139,3 +139,101 @@ resource "null_resource" "validate_management_account" {
     }
   }
 }
+
+resource "null_resource" "validate_cloudscanner_auth" {
+  lifecycle {
+
+    # Only validate if orchestrator is provided
+    precondition {
+      condition = (
+        !local.condition_has_orchestrator_account_id ||
+        local.condition_cloudscanner_has_any_secret_config
+      )
+      error_message = "CloudScanner auth is required when an orchestrator account is provided. Provide either a secret ARN or client_id and client_secret."
+    }
+
+    # If NOT using ARN → client_id must exist when secret exists
+    precondition {
+      condition = (
+        !local.condition_has_orchestrator_account_id ||
+        local.condition_cloudscanner_use_arn ||
+        !local.condition_cloudscanner_secret_value_provided ||
+        local.condition_cloudscanner_client_id_provided
+      )
+      error_message = "CloudScanner auth: client_id is missing. Client Secret and ID must be provided."
+    }
+
+    # If NOT using ARN → client_secret must exist when client_id exists
+    precondition {
+      condition = (
+        !local.condition_has_orchestrator_account_id ||
+        local.condition_cloudscanner_use_arn ||
+        !local.condition_cloudscanner_client_id_provided ||
+        local.condition_cloudscanner_secret_value_provided
+      )
+      error_message = "CloudScanner auth: client_secret is missing. Client Secret and ID must be provided."
+    }
+
+    # Cannot provide both ARN and inline
+    precondition {
+      condition = (
+        !local.condition_has_orchestrator_account_id ||
+        !local.condition_cloudscanner_invalid_both_provided
+      )
+      error_message = "CloudScanner auth: provide either a secret ARN OR client_id/client_secret, not both."
+    }
+
+    # Prevent partial inline ONLY when not using ARN
+    precondition {
+      condition = (
+        !local.condition_has_orchestrator_account_id ||
+        local.condition_cloudscanner_use_arn ||
+        !local.condition_cloudscanner_partial_inline
+      )
+      error_message = "CloudScanner auth: both client_id and client_secret must be provided together."
+    }
+  }
+}
+
+resource "null_resource" "validate_org_register_auth" {
+  lifecycle {
+
+    # Must provide something
+    precondition {
+      condition     = local.condition_org_register_has_any_auth
+      error_message = "Org registration auth is required. Provide either a secret ARN or client_id and client_secret."
+    }
+
+    # Only validate inline if NOT using ARN
+    precondition {
+      condition = (
+        local.condition_org_register_use_arn ||
+        !local.condition_org_register_secret_value_provided ||
+        local.condition_org_register_client_id_provided
+      )
+      error_message = "Org registration auth: client_id is missing. Client Secret and ID must be provided."
+    }
+
+    precondition {
+      condition = (
+        local.condition_org_register_use_arn ||
+        !local.condition_org_register_client_id_provided ||
+        local.condition_org_register_secret_value_provided
+      )
+      error_message = "Org registration auth: client_secret is missing. Client Secret and ID must be provided."
+    }
+
+    precondition {
+      condition     = !local.condition_org_register_invalid_both_provided
+      error_message = "Org registration auth: provide either a secret ARN OR client_id/client_secret, not both."
+    }
+
+    precondition {
+      condition = (
+        local.condition_org_register_use_arn ||
+        !local.condition_org_register_partial_inline
+      )
+      error_message = "Org registration auth: both client_id and client_secret must be provided together."
+    }
+  }
+}

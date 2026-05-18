@@ -1,5 +1,5 @@
 locals {
-  # The upwind_version is defined as part of the release management and is used for version identifification. 
+  # The upwind_version is defined as part of the release management and is used for version identifification.
   # It must be maintained.
   upwind_version = "VERSION_UNDEFINED"
 
@@ -36,9 +36,89 @@ locals {
     (data.aws_caller_identity.current.account_id == var.orchestrator_account_id)
   ])
 
-  # Condition to determine if CloudScanner should be created :-
-  # * create the secret in the orchestrator account - only if a secret ARN has not been provided
-  condition_create_cloudscanner_secret = alltrue([local.condition_is_orchestrator_account,
-  var.upwind_cloudscanner_auth_secret_arn == null])
-}
+  # Condition to determine if CloudScanner should be created
+  condition_create_cloudscanner_secret = alltrue([
+    local.condition_is_orchestrator_account,
+    var.upwind_cloudscanner_auth_secret_arn == null
+  ])
 
+  # ---------------------------------------------
+  # CloudScanner auth secret resolution logic
+  # ---------------------------------------------
+
+  condition_cloudscanner_client_id_provided = (
+    var.upwind_cloudscanner_auth_client_id != null &&
+    var.upwind_cloudscanner_auth_client_id != ""
+  )
+
+  condition_cloudscanner_secret_value_provided = (
+    var.upwind_cloudscanner_auth_secret_value != null &&
+    var.upwind_cloudscanner_auth_secret_value != ""
+  )
+
+  condition_cloudscanner_use_arn = (
+    var.upwind_cloudscanner_auth_secret_arn != null &&
+    var.upwind_cloudscanner_auth_secret_arn != ""
+  )
+
+  condition_cloudscanner_use_inline = (
+    local.condition_cloudscanner_client_id_provided &&
+    local.condition_cloudscanner_secret_value_provided
+  )
+
+  condition_cloudscanner_partial_inline = (
+    local.condition_cloudscanner_client_id_provided !=
+    local.condition_cloudscanner_secret_value_provided
+  )
+
+  condition_cloudscanner_has_any_secret_config = (
+    local.condition_cloudscanner_use_arn ||
+    local.condition_cloudscanner_client_id_provided ||
+    local.condition_cloudscanner_secret_value_provided
+  )
+
+  condition_cloudscanner_invalid_both_provided = (
+    local.condition_cloudscanner_use_arn &&
+    local.condition_cloudscanner_use_inline
+  )
+
+  # ----------------------------------
+  # Org registration auth validation
+  # ----------------------------------
+
+  condition_org_register_client_id_provided = (
+    var.upwind_org_register_auth_client_id != null &&
+    var.upwind_org_register_auth_client_id != ""
+  )
+
+  condition_org_register_secret_value_provided = (
+    var.upwind_org_register_auth_secret_value != null &&
+    var.upwind_org_register_auth_secret_value != ""
+  )
+
+  condition_org_register_use_arn = (
+    var.upwind_org_register_auth_secret_arn != null &&
+    var.upwind_org_register_auth_secret_arn != ""
+  )
+
+  condition_org_register_use_inline = (
+    local.condition_org_register_client_id_provided &&
+    local.condition_org_register_secret_value_provided
+  )
+
+  condition_org_register_partial_inline = (
+    local.condition_org_register_client_id_provided !=
+    local.condition_org_register_secret_value_provided
+  )
+
+  condition_org_register_has_any_auth = (
+    local.condition_org_register_use_arn ||
+    local.condition_org_register_client_id_provided ||
+    local.condition_org_register_secret_value_provided
+  )
+
+  condition_org_register_invalid_both_provided = (
+    local.condition_org_register_use_arn &&
+    local.condition_org_register_use_inline
+  )
+}
