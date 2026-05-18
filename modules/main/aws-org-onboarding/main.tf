@@ -20,7 +20,7 @@ module "org_discovery_role" {
   custom_tags                      = var.custom_tags
 }
 
-# The Account Service role will be installed in all accounts but for the management account
+# The Account Service role will be installed in all accounts except for the management account
 # where it is only installed optionally.
 module "account_service_role" {
   count = (!local.condition_is_management_account ||
