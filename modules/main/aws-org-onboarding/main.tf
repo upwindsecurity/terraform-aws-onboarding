@@ -102,44 +102,6 @@ module "cloudscanner_secret" {
   custom_tags       = var.custom_tags
 }
 
-# Create the resources which will automatically register the Org role
-# resource "time_sleep" "wait_for_org_discovery_role_creation" {
-#   count = (local.condition_is_management_account && !var.upwind_disable_org_discovery_role_registration) ? 1 : 0
-#   depends_on = [
-#     module.org_discovery_role,
-#   ]
-#   create_duration = var.aws_iam_role_creation_wait_time
-# }
-
-# module "register_org_discovery_role" {
-#   count = (local.condition_is_management_account && !var.upwind_disable_org_discovery_role_registration) ? 1 : 0
-
-#   depends_on = [time_sleep.wait_for_org_discovery_role_creation]
-
-#   source                 = "./modules/register_org_role"
-#   upwind_organization_id = var.upwind_organization_id
-#   role_arn               = one(module.org_discovery_role[*]).iam_role.arn
-
-#   upwind_auth_client_id       = var.upwind_org_register_auth_client_id
-#   upwind_auth_secret_value    = var.upwind_org_register_auth_secret_value
-#   upwind_auth_secret_arn      = var.upwind_org_register_auth_secret_arn
-#   upwind_auth_endpoint        = var.upwind_auth_endpoint
-#   upwind_integration_endpoint = var.upwind_integration_endpoint
-#   upwind_region               = var.upwind_region
-# }
-
-# # Using a null resource so that we can avail of the precondition rules to
-# # perform extra validation when installing into the management account
-# resource "null_resource" "validate_management_account" {
-#   count = (local.condition_is_management_account) ? 1 : 0
-#   lifecycle {
-#     precondition {
-#       condition     = (local.condition_is_orchestrator_account && var.install_roles_in_management_account) || !local.condition_is_orchestrator_account
-#       error_message = "When using the Management account as the Orchestrator account, the option to install the additional roles must be enabled."
-#     }
-#   }
-# }
-
 resource "null_resource" "validate_cloudscanner_auth" {
   lifecycle {
 
