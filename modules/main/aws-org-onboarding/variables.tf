@@ -308,3 +308,34 @@ variable "aws_iam_role_creation_wait_time" {
   type        = string
   default     = "20s"
 }
+
+#######################################################################################
+# The following variables configure SaaS deployment mode
+#######################################################################################
+variable "is_saas" {
+  description = "When true, configures the module for Upwind SaaS-managed CloudScanner deployment. In SaaS mode the CloudScanner admin role and credentials secret are not created; instead a customer assume role is created that the Upwind SaaS account can assume."
+  type        = bool
+  default     = false
+}
+
+variable "cloudscanner_saas_trusted_account_id" {
+  description = "The AWS account ID of the Upwind SaaS account that will assume the customer assume role. Required when is_saas = true."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.cloudscanner_saas_trusted_account_id == null || can(regex("^[0-9]{12}$", var.cloudscanner_saas_trusted_account_id))
+    error_message = "cloudscanner_saas_trusted_account_id must be a 12-digit AWS account ID."
+  }
+}
+
+variable "cloudscanner_saas_customer_assume_role_name" {
+  description = "Base name of the IAM role created in the orchestrator account that the Upwind SaaS account assumes to perform scanning. Only used when is_saas = true."
+  type        = string
+  default     = "UpwindCloudScannerCustomerAssumeRole"
+
+  validation {
+    condition     = can(regex("^[a-zA-Z0-9-_]+$", var.cloudscanner_saas_customer_assume_role_name))
+    error_message = "cloudscanner_saas_customer_assume_role_name contains invalid characters."
+  }
+}
