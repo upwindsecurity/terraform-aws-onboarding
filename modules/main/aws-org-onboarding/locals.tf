@@ -15,6 +15,7 @@ locals {
   cloudscanner_admin_role_name           = "${var.cloudscanner_administration_role_name}${local.suffix}"
   cloudscanner_execution_role_name       = "${var.cloudscanner_execution_role_name}${local.suffix}"
   cloudscanner_secret_name               = "${var.credentials_secret_name_prefix}${var.cloudscanner_secret_name}${local.suffix}"
+  cloudscanner_saas_customer_assume_role_name = "${var.cloudscanner_saas_customer_assume_role_name}${local.suffix}"
 
   # Create managed policy names
   account_service_role_cloudformation_policy_name      = "${var.account_service_cloudformation_policy_name}${local.suffix}"
@@ -36,9 +37,15 @@ locals {
     (data.aws_caller_identity.current.account_id == var.orchestrator_account_id)
   ])
 
-  # Condition to determine if CloudScanner should be created
+  # SaaS mode conditions
+  condition_is_saas_mode = var.is_saas
+  condition_create_customer_assume_role = local.condition_is_saas_mode && local.condition_is_orchestrator_account
+
+  # Condition to determine if CloudScanner secret should be created.
+  # Not created in SaaS mode (Upwind manages the CloudScanner and its credentials).
   condition_create_cloudscanner_secret = alltrue([
     local.condition_is_orchestrator_account,
+    !local.condition_is_saas_mode,
     var.upwind_cloudscanner_auth_secret_arn == null
   ])
 
