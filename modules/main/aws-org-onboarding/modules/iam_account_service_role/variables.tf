@@ -167,3 +167,15 @@ variable "custom_tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "is_saas_mode" {
+  description = "Whether this is a SaaS deployment. Used to set discovery tags on the account service role."
+  type        = bool
+  default     = false
+}
+
+variable "cloudscanner_saas_customer_assume_role_name" {
+  description = "Name of the SaaS customer assume role. When set, added as a discovery tag on the account service role."
+  type        = string
+  default     = null
+}
