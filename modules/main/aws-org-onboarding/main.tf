@@ -48,17 +48,22 @@ module "account_service_role" {
 
   # The management account could be chosen as the orchestrator account (not recommended), so the role should be
   # created with the additional permissions
-  apply_for_orchestrator_account = local.condition_is_orchestrator_account
+  # In SaaS mode the admin role and management policies are not created, so apply_for_orchestrator_account is false.
+  apply_for_orchestrator_account = local.condition_is_orchestrator_account && !local.condition_is_saas_mode
 
   # Provide conditional features
   upwind_feature_dspm_enabled                       = var.upwind_feature_dspm_enabled
   upwind_cloudscanner_management_enabled            = var.upwind_cloudscanner_management_enabled
   upwind_include_ec2_network_management_permissions = var.upwind_include_ec2_network_management_permissions
+
+  # SaaS mode tags
+  is_saas_mode                                = local.condition_is_saas_mode
+  cloudscanner_saas_customer_assume_role_name = local.condition_create_customer_assume_role ? local.cloudscanner_saas_customer_assume_role_name : null
 }
 
 # Create the CloudScanner admin role. This will be in the orchestrator account.
 module "cloudscanner_admin_role" {
-  count = local.condition_is_orchestrator_account ? 1 : 0
+  count = (local.condition_is_orchestrator_account && !local.condition_is_saas_mode) ? 1 : 0
 
   source = "./modules/iam_cloudscanner_admin_role"
 
@@ -86,6 +91,10 @@ module "cloudscanner_execution_role" {
   # Provide conditional features
   upwind_feature_dspm_enabled           = var.upwind_feature_dspm_enabled
   upwind_feature_dspm_account_whitelist = var.upwind_feature_dspm_account_whitelist
+
+  # SaaS mode trust policy
+  is_saas_mode                                = local.condition_is_saas_mode
+  cloudscanner_saas_customer_assume_role_name = local.cloudscanner_saas_customer_assume_role_name
 }
 
 # Create the CloudScanner secret in the orchestrator account if not using a provided ARN.
@@ -100,6 +109,20 @@ module "cloudscanner_secret" {
   auth_client_id    = var.upwind_cloudscanner_auth_client_id
   auth_secret_value = var.upwind_cloudscanner_auth_secret_value
   custom_tags       = var.custom_tags
+}
+
+# In SaaS mode, create the customer assume role in the orchestrator account.
+# Upwind's SaaS account assumes this role to perform scanning operations.
+module "cloudscanner_saas_customer_assume_role" {
+  count = local.condition_create_customer_assume_role ? 1 : 0
+
+  source = "./modules/iam_cloudscanner_saas_customer_assume_role"
+
+  role_name                        = local.cloudscanner_saas_customer_assume_role_name
+  saas_trusted_account_id          = var.cloudscanner_saas_trusted_account_id
+  external_id                      = var.external_id
+  cloudscanner_execution_role_name = local.cloudscanner_execution_role_name
+  custom_tags                      = var.custom_tags
 }
 
 # Create the resources which will automatically register the Org role
@@ -143,9 +166,10 @@ resource "null_resource" "validate_management_account" {
 resource "null_resource" "validate_cloudscanner_auth" {
   lifecycle {
 
-    # Only validate if orchestrator is provided
+    # Only validate if orchestrator is provided AND not in SaaS mode
     precondition {
       condition = (
+        local.condition_is_saas_mode ||
         !local.condition_has_orchestrator_account_id ||
         local.condition_cloudscanner_has_any_secret_config
       )
@@ -155,6 +179,7 @@ resource "null_resource" "validate_cloudscanner_auth" {
     # If NOT using ARN → client_id must exist when secret exists
     precondition {
       condition = (
+        local.condition_is_saas_mode ||
         !local.condition_has_orchestrator_account_id ||
         local.condition_cloudscanner_use_arn ||
         !local.condition_cloudscanner_secret_value_provided ||
@@ -166,6 +191,7 @@ resource "null_resource" "validate_cloudscanner_auth" {
     # If NOT using ARN → client_secret must exist when client_id exists
     precondition {
       condition = (
+        local.condition_is_saas_mode ||
         !local.condition_has_orchestrator_account_id ||
         local.condition_cloudscanner_use_arn ||
         !local.condition_cloudscanner_client_id_provided ||
@@ -177,6 +203,7 @@ resource "null_resource" "validate_cloudscanner_auth" {
     # Cannot provide both ARN and inline
     precondition {
       condition = (
+        local.condition_is_saas_mode ||
         !local.condition_has_orchestrator_account_id ||
         !local.condition_cloudscanner_invalid_both_provided
       )
@@ -186,11 +213,21 @@ resource "null_resource" "validate_cloudscanner_auth" {
     # Prevent partial inline ONLY when not using ARN
     precondition {
       condition = (
+        local.condition_is_saas_mode ||
         !local.condition_has_orchestrator_account_id ||
         local.condition_cloudscanner_use_arn ||
         !local.condition_cloudscanner_partial_inline
       )
       error_message = "CloudScanner auth: both client_id and client_secret must be provided together."
+    }
+  }
+}
+
+resource "null_resource" "validate_saas_config" {
+  lifecycle {
+    precondition {
+      condition     = !local.condition_is_saas_mode || var.cloudscanner_saas_trusted_account_id != null
+      error_message = "cloudscanner_saas_trusted_account_id is required when is_saas = true."
     }
   }
 }
