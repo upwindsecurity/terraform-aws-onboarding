@@ -229,6 +229,11 @@ resource "null_resource" "validate_saas_config" {
       condition     = !local.condition_is_saas_mode || var.cloudscanner_saas_trusted_account_id != null
       error_message = "cloudscanner_saas_trusted_account_id is required when is_saas = true."
     }
+
+    precondition {
+      condition     = !local.condition_is_saas_mode || var.orchestrator_account_id != null
+      error_message = "orchestrator_account_id is required when is_saas = true."
+    }
   }
 }
 

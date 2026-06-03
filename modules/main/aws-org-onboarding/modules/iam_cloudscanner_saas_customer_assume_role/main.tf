@@ -42,17 +42,6 @@ resource "aws_iam_role_policy" "cloudscanner_saas_customer_assume_role_policy" {
       Version = "2012-10-17"
       Statement = [
         {
-          Sid      = "PermitEBSEncryptFromAnyCMK"
-          Effect   = "Allow"
-          Action   = ["kms:ReEncryptFrom"]
-          Resource = "*"
-          Condition = {
-            StringLike = {
-              "kms:ViaService" = "ec2.*.amazonaws.com"
-            }
-          }
-        },
-        {
           Sid      = "PermitExecutionRoleAssumption"
           Effect   = "Allow"
           Action   = ["sts:AssumeRole"]
