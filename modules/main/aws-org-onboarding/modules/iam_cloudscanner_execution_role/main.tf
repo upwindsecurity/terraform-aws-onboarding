@@ -20,7 +20,7 @@ resource "aws_iam_role" "cloudscanner_execution_role" {
               # In non-SaaS mode trust the CloudScanner admin role in the orchestrator account.
               "aws:PrincipalArn" = var.is_saas_mode ? (
                 "arn:${data.aws_partition.current.partition}:iam::${var.orchestrator_account_id}:role/${var.cloudscanner_saas_customer_assume_role_name}"
-              ) : (
+                ) : (
                 "arn:${data.aws_partition.current.partition}:iam::${var.orchestrator_account_id}:role/${var.cloudscanner_admin_role_name}"
               )
             }

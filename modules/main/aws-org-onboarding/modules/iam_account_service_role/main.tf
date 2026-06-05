@@ -1306,15 +1306,15 @@ resource "aws_iam_policy" "account_service_agentless_k8s_access_entries_access_p
       Version = "2012-10-17"
       Statement = [
         {
-          Sid    = "DescribeCluster"
-          Effect = "Allow"
-          Action = ["eks:DescribeCluster"]
+          Sid      = "DescribeCluster"
+          Effect   = "Allow"
+          Action   = ["eks:DescribeCluster"]
           Resource = "arn:${data.aws_partition.current.partition}:eks:*:${data.aws_caller_identity.current.account_id}:cluster/*"
         },
         {
-          Sid    = "SelfProvisionAccessEntry"
-          Effect = "Allow"
-          Action = ["eks:CreateAccessEntry"]
+          Sid      = "SelfProvisionAccessEntry"
+          Effect   = "Allow"
+          Action   = ["eks:CreateAccessEntry"]
           Resource = "arn:${data.aws_partition.current.partition}:eks:*:${data.aws_caller_identity.current.account_id}:cluster/*"
           Condition = {
             StringEquals = {
@@ -1324,21 +1324,21 @@ resource "aws_iam_policy" "account_service_agentless_k8s_access_entries_access_p
           }
         },
         {
-          Sid    = "DescribeAccessEntry"
-          Effect = "Allow"
-          Action = ["eks:DescribeAccessEntry"]
+          Sid      = "DescribeAccessEntry"
+          Effect   = "Allow"
+          Action   = ["eks:DescribeAccessEntry"]
           Resource = "arn:${data.aws_partition.current.partition}:eks:*:${data.aws_caller_identity.current.account_id}:access-entry/*/role/${data.aws_caller_identity.current.account_id}/${var.account_service_role_name}/*"
         },
         {
-          Sid    = "ListAssociatedAccessPolicies"
-          Effect = "Allow"
-          Action = ["eks:ListAssociatedAccessPolicies"]
+          Sid      = "ListAssociatedAccessPolicies"
+          Effect   = "Allow"
+          Action   = ["eks:ListAssociatedAccessPolicies"]
           Resource = "arn:${data.aws_partition.current.partition}:eks:*:${data.aws_caller_identity.current.account_id}:access-entry/*/role/${data.aws_caller_identity.current.account_id}/${var.account_service_role_name}/*"
         },
         {
-          Sid    = "AllowTaggingOnCreation"
-          Effect = "Allow"
-          Action = ["eks:TagResource"]
+          Sid      = "AllowTaggingOnCreation"
+          Effect   = "Allow"
+          Action   = ["eks:TagResource"]
           Resource = "arn:${data.aws_partition.current.partition}:eks:*:${data.aws_caller_identity.current.account_id}:access-entry/*/role/${data.aws_caller_identity.current.account_id}/${var.account_service_role_name}/*"
           Condition = {
             StringEquals = {
@@ -1347,9 +1347,9 @@ resource "aws_iam_policy" "account_service_agentless_k8s_access_entries_access_p
           }
         },
         {
-          Sid    = "AssociateViewOnlyPolicy"
-          Effect = "Allow"
-          Action = ["eks:AssociateAccessPolicy"]
+          Sid      = "AssociateViewOnlyPolicy"
+          Effect   = "Allow"
+          Action   = ["eks:AssociateAccessPolicy"]
           Resource = "arn:${data.aws_partition.current.partition}:eks:*:${data.aws_caller_identity.current.account_id}:access-entry/*/role/${data.aws_caller_identity.current.account_id}/${var.account_service_role_name}/*"
           Condition = {
             StringEquals = {
@@ -1362,9 +1362,9 @@ resource "aws_iam_policy" "account_service_agentless_k8s_access_entries_access_p
           }
         },
         {
-          Sid    = "CleanupSelfCreatedEntries"
-          Effect = "Allow"
-          Action = ["eks:DeleteAccessEntry", "eks:DisassociateAccessPolicy"]
+          Sid      = "CleanupSelfCreatedEntries"
+          Effect   = "Allow"
+          Action   = ["eks:DeleteAccessEntry", "eks:DisassociateAccessPolicy"]
           Resource = "arn:${data.aws_partition.current.partition}:eks:*:${data.aws_caller_identity.current.account_id}:access-entry/*/role/${data.aws_caller_identity.current.account_id}/${var.account_service_role_name}/*"
           Condition = {
             StringEquals = {
@@ -1401,9 +1401,9 @@ resource "aws_iam_policy" "account_service_agentless_k8s_ssm_access_policy" {
       Version = "2012-10-17"
       Statement = [
         {
-          Sid    = "DescribeCluster"
-          Effect = "Allow"
-          Action = ["eks:DescribeCluster"]
+          Sid      = "DescribeCluster"
+          Effect   = "Allow"
+          Action   = ["eks:DescribeCluster"]
           Resource = "arn:${data.aws_partition.current.partition}:eks:*:${data.aws_caller_identity.current.account_id}:cluster/*"
         },
         {
@@ -1446,9 +1446,9 @@ resource "aws_iam_policy" "account_service_agentless_k8s_ssm_access_policy" {
           }
         },
         {
-          Sid    = "SSMSessionManagement"
-          Effect = "Allow"
-          Action = ["ssm:TerminateSession", "ssm:ResumeSession"]
+          Sid      = "SSMSessionManagement"
+          Effect   = "Allow"
+          Action   = ["ssm:TerminateSession", "ssm:ResumeSession"]
           Resource = ["arn:${data.aws_partition.current.partition}:ssm:*:${data.aws_caller_identity.current.account_id}:session/upwind*"]
         }
       ]
