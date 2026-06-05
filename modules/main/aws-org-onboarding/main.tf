@@ -17,7 +17,10 @@ module "org_discovery_role" {
   cloudscanner_admin_role_name     = local.cloudscanner_admin_role_name
   cloudscanner_execution_role_name = local.cloudscanner_execution_role_name
   upwind_feature_dspm_enabled      = var.upwind_feature_dspm_enabled
-  custom_tags                      = var.custom_tags
+  is_saas_mode                                = local.condition_is_saas_mode
+  cloudscanner_saas_customer_assume_role_name = local.condition_is_saas_mode ? local.cloudscanner_saas_customer_assume_role_name : null
+  upwind_cloudscanner_management_enabled      = var.upwind_cloudscanner_management_enabled
+  custom_tags                                 = var.custom_tags
 }
 
 # The Account Service role will be installed in all accounts except for the management account
@@ -55,6 +58,15 @@ module "account_service_role" {
   upwind_feature_dspm_enabled                       = var.upwind_feature_dspm_enabled
   upwind_cloudscanner_management_enabled            = var.upwind_cloudscanner_management_enabled
   upwind_include_ec2_network_management_permissions = var.upwind_include_ec2_network_management_permissions
+
+  # Agentless Kubernetes
+  upwind_agentless_k8s_access_entries_enabled              = var.upwind_agentless_k8s_access_entries_enabled
+  upwind_agentless_k8s_ssm_enabled                         = var.upwind_agentless_k8s_ssm_enabled
+  upwind_agentless_k8s_eks_admin_view_policy_enabled       = var.upwind_agentless_k8s_eks_admin_view_policy_enabled
+  upwind_agentless_k8s_account_whitelist                   = var.upwind_agentless_k8s_account_whitelist
+  current_account_id                                       = data.aws_caller_identity.current.account_id
+  account_service_agentless_k8s_access_entries_policy_name = local.account_service_agentless_k8s_access_entries_policy_name
+  account_service_agentless_k8s_ssm_policy_name            = local.account_service_agentless_k8s_ssm_policy_name
 
   # SaaS mode tags
   is_saas_mode                                = local.condition_is_saas_mode
@@ -119,7 +131,7 @@ module "cloudscanner_saas_customer_assume_role" {
   source = "./modules/iam_cloudscanner_saas_customer_assume_role"
 
   role_name                        = local.cloudscanner_saas_customer_assume_role_name
-  saas_trusted_account_id          = var.cloudscanner_saas_trusted_account_id
+  saas_trusted_account_id          = local.saas_trusted_account_id
   external_id                      = var.external_id
   cloudscanner_execution_role_name = local.cloudscanner_execution_role_name
   custom_tags                      = var.custom_tags
@@ -226,11 +238,6 @@ resource "null_resource" "validate_cloudscanner_auth" {
 resource "null_resource" "validate_saas_config" {
   lifecycle {
     precondition {
-      condition     = !local.condition_is_saas_mode || var.cloudscanner_saas_trusted_account_id != null
-      error_message = "cloudscanner_saas_trusted_account_id is required when is_saas = true."
-    }
-
-    precondition {
       condition     = !local.condition_is_saas_mode || var.orchestrator_account_id != null
       error_message = "orchestrator_account_id is required when is_saas = true."
     }
@@ -240,15 +247,17 @@ resource "null_resource" "validate_saas_config" {
 resource "null_resource" "validate_org_register_auth" {
   lifecycle {
 
-    # Must provide something
+    # Must provide something (only when registration is enabled and this is the management account)
     precondition {
-      condition     = local.condition_org_register_has_any_auth
+      condition     = var.upwind_disable_org_discovery_role_registration || !local.condition_is_management_account || local.condition_org_register_has_any_auth
       error_message = "Org registration auth is required. Provide either a secret ARN or client_id and client_secret."
     }
 
     # Only validate inline if NOT using ARN
     precondition {
       condition = (
+        var.upwind_disable_org_discovery_role_registration ||
+        !local.condition_is_management_account ||
         local.condition_org_register_use_arn ||
         !local.condition_org_register_secret_value_provided ||
         local.condition_org_register_client_id_provided
@@ -258,6 +267,8 @@ resource "null_resource" "validate_org_register_auth" {
 
     precondition {
       condition = (
+        var.upwind_disable_org_discovery_role_registration ||
+        !local.condition_is_management_account ||
         local.condition_org_register_use_arn ||
         !local.condition_org_register_client_id_provided ||
         local.condition_org_register_secret_value_provided
@@ -266,12 +277,14 @@ resource "null_resource" "validate_org_register_auth" {
     }
 
     precondition {
-      condition     = !local.condition_org_register_invalid_both_provided
+      condition     = var.upwind_disable_org_discovery_role_registration || !local.condition_is_management_account || !local.condition_org_register_invalid_both_provided
       error_message = "Org registration auth: provide either a secret ARN OR client_id/client_secret, not both."
     }
 
     precondition {
       condition = (
+        var.upwind_disable_org_discovery_role_registration ||
+        !local.condition_is_management_account ||
         local.condition_org_register_use_arn ||
         !local.condition_org_register_partial_inline
       )

@@ -242,6 +242,54 @@ variable "custom_tags" {
   default     = {}
 }
 
+#######################################################################################
+# The following variables configure Agentless Kubernetes support
+#######################################################################################
+variable "upwind_agentless_k8s_access_entries_enabled" {
+  description = "Enable the creation of the policy for agentless Kubernetes resource fetching using EKS access entries as the authentication method."
+  type        = bool
+  default     = false
+}
+
+variable "upwind_agentless_k8s_ssm_enabled" {
+  description = "Enable the creation of the policy for agentless Kubernetes resource fetching from private EKS clusters via SSM tunnels."
+  type        = bool
+  default     = false
+}
+
+variable "upwind_agentless_k8s_eks_admin_view_policy_enabled" {
+  description = "Allow the role to associate AmazonEKSAdminViewPolicy (in addition to AmazonEKSViewPolicy) on Upwind-created access entries. Only takes effect when upwind_agentless_k8s_access_entries_enabled is true."
+  type        = bool
+  default     = true
+}
+
+variable "upwind_agentless_k8s_account_whitelist" {
+  description = "(Optional). If set, limits the accounts in which the agentless Kubernetes permissions are created."
+  type        = list(string)
+  default     = []
+}
+
+variable "account_service_agentless_k8s_access_entries_policy_name" {
+  description = "The base name to be used for the agentless Kubernetes access entries policy in the account service role."
+  type        = string
+  default     = "UpwindAccountServiceAgentlessK8sAEPolicy"
+
+  validation {
+    condition     = can(regex("^[\\w+=,.@-]+$", var.account_service_agentless_k8s_access_entries_policy_name))
+    error_message = "The agentless Kubernetes access entries policy base name contains invalid characters."
+  }
+}
+
+variable "account_service_agentless_k8s_ssm_policy_name" {
+  description = "The base name to be used for the agentless Kubernetes SSM policy in the account service role."
+  type        = string
+  default     = "UpwindAccountServiceAgentlessK8sSSMPolicy"
+
+  validation {
+    condition     = can(regex("^[\\w+=,.@-]+$", var.account_service_agentless_k8s_ssm_policy_name))
+    error_message = "The agentless Kubernetes SSM policy base name contains invalid characters."
+  }
+}
 
 #######################################################################################
 # The following variables are used as part of the Org Discovery role registration
