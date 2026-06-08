@@ -1,5 +1,5 @@
 module "upwind_aws_org_onboarding" {
-  source = "./modules/main/aws-org-onboarding"
+  source = "./modules/aws-org-onboarding"
 
   # ---------------------------------------
   # Core Upwind endpoints
