@@ -6,6 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [2.1.0](https://github.com/upwindsecurity/terraform-aws-onboarding/compare/v2.0.1...v2.1.0) (2026-06-08)
+
+### Features
+
+* **UP-187:** add iam_cloudscanner_saas_customer_assume_role module ([20d53ad](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/20d53ad9529ae7fc37ffd6c5bf36660b11d8441c))
+* **UP-187:** add SaaS customer assume role outputs ([d6b48ae](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/d6b48ae932210927b0dfef396110528e23bde55e))
+* **UP-187:** add SaaS discovery tags to account service role ([f5b2c24](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/f5b2c244ab3f305859197b577eed06ff470fc2d1))
+* **UP-187:** add SaaS mode conditions to locals ([fdbbc44](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/fdbbc44c7681b5d4384603893e1330649d29560a))
+* **UP-187:** add SaaS mode support and migrate agentless K8s IAM policies ([4dd7ddd](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/4dd7ddd8fdd77a956a3049da947175af5ddb3866))
+* **UP-187:** add SaaS mode variables to aws-org-onboarding ([3c15679](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/3c15679034a5e7550b06a1f1c543bb036091a9ea))
+* **UP-187:** update execution role trust policy for SaaS mode ([6f9941b](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/6f9941b2f0913f5c1e4ad87d642b349e376450c4))
+* **UP-187:** wire SaaS mode into aws-org-onboarding main ([9bbb9cb](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/9bbb9cb8a1df923f7152674dd1d831ef5ab0ac27))
+
+### Bug Fixes
+
+* **UP-187:** remove unnecessary KMS permission from SaaS assume role; require orchestrator_account_id in SaaS mode ([ff51d09](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/ff51d09ea1135806f848b32e2c0b76df5b8eadb5))
+
 ## 1.0.0 (2026-04-13)
 
 ### Bug Fixes

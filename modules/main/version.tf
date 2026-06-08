@@ -1,1 +1,1 @@
-locals { upwind_version = "1.0.0" }
+locals { upwind_version = "2.1.0" }
