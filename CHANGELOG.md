@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [2.1.1](https://github.com/upwindsecurity/terraform-aws-onboarding/compare/v2.1.0...v2.1.1) (2026-06-08)
+
+### Bug Fixes
+
+* **AG-5732:** fixing issues with odule structure ([#20](https://github.com/upwindsecurity/terraform-aws-onboarding/issues/20)) ([bc9ae00](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/bc9ae006b5a5842b9a1009c965621ff54750e86d))
+
 ## 1.0.0 (2026-04-13)
 
 ### Bug Fixes
