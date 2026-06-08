@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [2.1.3](https://github.com/upwindsecurity/terraform-aws-onboarding/compare/v2.1.2...v2.1.3) (2026-06-08)
+
+### Bug Fixes
+
+* **AG-5732:** fixing syntax issues ([#24](https://github.com/upwindsecurity/terraform-aws-onboarding/issues/24)) ([0eb8ef7](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/0eb8ef7f88d9f6cc0a938e96430f73c75f511aff))
+
 ## 1.0.0 (2026-04-13)
 
 ### Bug Fixes
