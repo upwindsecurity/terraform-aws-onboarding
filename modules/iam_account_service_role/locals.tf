@@ -11,12 +11,15 @@ locals {
     "https://s3.us-east-1.amazonaws.com/get.upwind.io/cfn/templates/*"
   ]
 
-  agentless_k8s_account_allowed = (
-    length(var.upwind_agentless_k8s_account_whitelist) == 0 || (
-      var.current_account_id != null &&
-      contains(var.upwind_agentless_k8s_account_whitelist, var.current_account_id)
+agentless_k8s_account_allowed = (
+  length(coalesce(var.upwind_agentless_k8s_account_whitelist, [])) == 0 || (
+    var.current_account_id != null &&
+    contains(
+      coalesce(var.upwind_agentless_k8s_account_whitelist, []),
+      var.current_account_id
     )
   )
+)
 
   agentless_k8s_access_entries_enabled = var.upwind_agentless_k8s_access_entries_enabled && local.agentless_k8s_account_allowed
 
