@@ -41,5 +41,6 @@ module "upwind_aws_org_onboarding" {
   # ---------------------------------------
   # Permissions toggles
   # ---------------------------------------
-  upwind_include_ec2_network_management_permissions = var.upwind_include_ec2_network_management_permissions
+  upwind_include_ec2_network_management_permissions =
+    var.upwind_include_ec2_network_management_permissions
 }
