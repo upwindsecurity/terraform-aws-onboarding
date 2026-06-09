@@ -1,1 +1,3 @@
-locals { upwind_version = "2.1.5" }
+locals {
+  upwind_version = "TF-2.1.5"
+}
