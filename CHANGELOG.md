@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [2.1.7](https://github.com/upwindsecurity/terraform-aws-onboarding/compare/v2.1.6...v2.1.7) (2026-06-09)
+
+### Bug Fixes
+
+* **AG-0:** removing unnecessary pr step ([#32](https://github.com/upwindsecurity/terraform-aws-onboarding/issues/32)) ([b3ec09e](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/b3ec09ec278eb44ad2e00e32bd6eb338dada94a8))
+
 ## [2.1.6](https://github.com/upwindsecurity/terraform-aws-onboarding/compare/v2.1.5...v2.1.6) (2026-06-09)
 
 ### Bug Fixes
