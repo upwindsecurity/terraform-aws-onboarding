@@ -42,6 +42,12 @@ jobs:
       uses: cycjimmy/semantic-release-action@v6
       with:
         semantic_version: 24.2.5
+        # Only install plugins that are not built-in to semantic-release
+        # Built-in plugins (automatically available):
+        #   - @semantic-release/commit-analyzer
+        #   - @semantic-release/release-notes-generator
+        #   - @semantic-release/github
+        # Extra plugins and presets (need explicit installation):
         extra_plugins: |
           @semantic-release/changelog@6.0.3
           conventional-changelog-conventionalcommits@9.0.0
@@ -58,8 +64,10 @@ jobs:
         # Get repository name for packaging
         REPO_NAME=$(echo ${{ github.repository }} | cut -d'/' -f2)
 
+        # Package each discovered module dynamically
         echo "Discovered modules: ${{ needs.discover-modules.outputs.modules }}"
 
+        # Parse modules JSON array and iterate
         for module in $(echo '${{ needs.discover-modules.outputs.modules }}' | jq -r '.[]'); do
           echo "Creating $module module package..."
           tar --exclude-from $GITHUB_WORKSPACE/.gitignore \
@@ -67,6 +75,7 @@ jobs:
             -C $GITHUB_WORKSPACE/modules/$module .
         done
 
+        # List created artifacts
         echo "Created artifacts:"
         ls -la $GITHUB_WORKSPACE/release-artifacts/
 
