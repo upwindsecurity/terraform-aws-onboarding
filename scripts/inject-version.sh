@@ -6,13 +6,10 @@ VERSION="$1"
 for module in modules/*; do
   [ -d "$module" ] || continue
 
-  FILE="$module/version.tf"
-
-  cat > "$FILE" <<EOF
+  cat > "$module/version.tf" <<EOF
 locals {
   upwind_version = "TF-${VERSION}"
 }
 EOF
 
-  echo "Updated $FILE"
 done
