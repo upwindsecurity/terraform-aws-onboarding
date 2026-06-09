@@ -7,7 +7,6 @@ on:
 
 permissions:
   contents: write        # Required to create and push release tags
-  pull-requests: write   # Required to create PRs for version updates
   issues: write          # Required to create and manage labels on PRs
 
 jobs:
@@ -56,31 +55,13 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Create Pull Request with Changelog
-      if: success() && steps.release.outputs.new_release_published == 'true'
-      uses: peter-evans/create-pull-request@v7
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        commit-message: "chore(release): v${{ steps.release.outputs.new_release_version }} [skip ci]"
-        title: "chore(release): v${{ steps.release.outputs.new_release_version }}"
-        body: |
-          This PR contains the release changes for v${{ steps.release.outputs.new_release_version }}, including:
-          - Updated CHANGELOG.md
-          - Release tag: v${{ steps.release.outputs.new_release_version }}
-
-          This PR was automatically created by the release workflow.
-        branch: release-${{ steps.release.outputs.new_release_version }}
-        labels: |
-          kind/release
-          lifecycle/automated
-
     - name: Build Terraform Modules
       if: steps.release.outputs.new_release_published == 'true'
       run: |
         # Create release directory
         mkdir -p release-artifacts
 
-        # Get repository name for package naming
+        # Get repository name for packaging
         REPO_NAME=$(echo ${{ github.repository }} | cut -d'/' -f2)
 
         # Package each discovered module dynamically
