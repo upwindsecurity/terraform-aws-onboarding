@@ -34,8 +34,8 @@ resource "aws_iam_role" "account_service_role" {
       "upwind:aws:Component"      = "Onboarding",
       "upwind:aws:ReleaseVersion" = local.upwind_version
     },
-    # If the role is being created with elevated permissions, we will add the additional tags needed for
-    # CloudScanner Discovery
+    # If the role is being created with elevated permissions (non-SaaS orchestrator account),
+    # add tags for CloudScanner Discovery.
     var.apply_for_orchestrator_account ? {
       "upwind:aws:CloudScannerAdministrationRoleName" = var.cloudscanner_admin_role_name
       "upwind:aws:CloudScannerExecutionRoleName"      = var.cloudscanner_execution_role_name
@@ -44,6 +44,10 @@ resource "aws_iam_role" "account_service_role" {
       "upwind:aws:HasDSPMPermissions"                 = var.upwind_feature_dspm_enabled ? "Yes" : "No"
       "upwind:aws:HasCSAutomationPermissions"         = var.upwind_cloudscanner_management_enabled ? "Yes" : "No"
       "upwind:aws:HasCSEC2NetworkPermissions"         = var.upwind_include_ec2_network_management_permissions ? "Yes" : "No"
+    } : {},
+        # In SaaS mode, tag the account service role with the customer assume role name for discovery.
+    var.cloudscanner_saas_customer_assume_role_name != null ? {
+      "upwind:aws:CustomerAssumeRoleName" = var.cloudscanner_saas_customer_assume_role_name
     } : {},
   )
 }
