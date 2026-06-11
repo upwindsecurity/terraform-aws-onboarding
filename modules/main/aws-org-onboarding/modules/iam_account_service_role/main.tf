@@ -2,6 +2,19 @@ data "aws_partition" "current" {}
 data "aws_region" "current" {}
 data "aws_caller_identity" "current" {}
 
+resource "null_resource" "validate_agentless_k8_account_whitelist" {
+  lifecycle {
+    precondition {
+      condition = (
+        length(var.upwind_agentless_k8s_account_whitelist) == 0 ||
+        !(var.upwind_agentless_k8s_access_entries_enabled || var.upwind_agentless_k8s_ssm_enabled) ||
+        var.current_account_id != null
+      )
+      error_message = "When upwind_agentless_k8s_account_whitelist is set and either agentless Kubernetes access entries or agentless Kubernetes SSM is enabled, current_account_id must also be provided so Terraform can determine resource counts during plan."
+    }
+  }
+}
+
 resource "aws_iam_role" "account_service_role" {
   name        = var.account_service_role_name
   description = "Grants Upwind Security the necessary permissions to oversee and manage account-level governance, including security audits, compliance checks, and operational control."
@@ -29,14 +42,9 @@ resource "aws_iam_role" "account_service_role" {
 
   # The Upwind backend uses tags on the roles for system discovery. These tags must not be altered.
   tags = merge(
-    var.custom_tags,
-    {
-      "upwind:aws:Component"            = "Onboarding",
-      "upwind:aws:ReleaseVersion"       = local.upwind_version,
-      "upwind:aws:CloudScannerSaaSMode" = var.is_saas_mode ? "Enabled" : "Disabled"
-    },
-    # If the role is being created with elevated permissions (non-SaaS orchestrator account),
-    # add tags for CloudScanner Discovery.
+    local.common_tags,
+    # If the role is being created with elevated permissions, we will add the additional tags needed for
+    # CloudScanner Discovery
     var.apply_for_orchestrator_account ? {
       "upwind:aws:CloudScannerAdministrationRoleName" = var.cloudscanner_admin_role_name
       "upwind:aws:CloudScannerExecutionRoleName"      = var.cloudscanner_execution_role_name
@@ -46,15 +54,18 @@ resource "aws_iam_role" "account_service_role" {
       "upwind:aws:HasCSAutomationPermissions"         = var.upwind_cloudscanner_management_enabled ? "Yes" : "No"
       "upwind:aws:HasCSEC2NetworkPermissions"         = var.upwind_include_ec2_network_management_permissions ? "Yes" : "No"
     } : {},
-    # In SaaS mode, tag the account service role with the customer assume role name for discovery.
-    var.cloudscanner_saas_customer_assume_role_name != null ? {
-      "upwind:aws:CustomerAssumeRoleName" = var.cloudscanner_saas_customer_assume_role_name
-    } : {},
+
+    # Tags to signal whether agentless-k8s permissions were granted on this role.
+    # Not gated on apply_for_orchestrator_account, added on role in all accounts.
+    {
+      "upwind:aws:HasAgentlessKubernetesAccessEntryPermissions" = local.agentless_k8s_access_entries_enabled ? "Yes" : "No"
+      "upwind:aws:HasAgentlessKubernetesSSMPermissions"         = local.agentless_k8s_ssm_enabled ? "Yes" : "No"
+    },
   )
 }
 
 resource "aws_iam_role_policy_attachment" "account_service_role_policy_attachment" {
-  policy_arn = "arn:aws:iam::aws:policy/SecurityAudit"
+  policy_arn = "arn:${data.aws_partition.current.partition}:iam::aws:policy/SecurityAudit"
   role       = aws_iam_role.account_service_role.name
 }
 
@@ -424,7 +435,7 @@ resource "aws_iam_policy" "account_service_cloudformation_access_policy" {
             "cloudformation:CreateChangeSet"
           ]
           Resource = [
-            "arn:aws:cloudformation:*:aws:transform/Serverless-2016-10-31"
+            "arn:${data.aws_partition.current.partition}:cloudformation:*:aws:transform/Serverless-2016-10-31"
           ]
         },
         {
@@ -448,8 +459,8 @@ resource "aws_iam_policy" "account_service_cloudformation_access_policy" {
             "cloudformation:DeleteStack"
           ]
           Resource = [
-            "arn:aws:cloudformation:*:${data.aws_caller_identity.current.account_id}:stack/upwind*",
-            "arn:aws:cloudformation:*:${data.aws_caller_identity.current.account_id}:stack/Upwind*"
+            "arn:${data.aws_partition.current.partition}:cloudformation:*:${data.aws_caller_identity.current.account_id}:stack/upwind*",
+            "arn:${data.aws_partition.current.partition}:cloudformation:*:${data.aws_caller_identity.current.account_id}:stack/Upwind*"
           ]
         },
         {
@@ -463,8 +474,8 @@ resource "aws_iam_policy" "account_service_cloudformation_access_policy" {
             "cloudformation:UpdateStack"
           ]
           Resource = [
-            "arn:aws:cloudformation:*:${data.aws_caller_identity.current.account_id}:stack/upwind*",
-            "arn:aws:cloudformation:*:${data.aws_caller_identity.current.account_id}:stack/Upwind*"
+            "arn:${data.aws_partition.current.partition}:cloudformation:*:${data.aws_caller_identity.current.account_id}:stack/upwind*",
+            "arn:${data.aws_partition.current.partition}:cloudformation:*:${data.aws_caller_identity.current.account_id}:stack/Upwind*"
           ]
           Condition = {
             StringLike = {
@@ -481,8 +492,8 @@ resource "aws_iam_policy" "account_service_cloudformation_access_policy" {
             "cloudformation:UpdateStack"
           ]
           Resource = [
-            "arn:aws:cloudformation:*:${data.aws_caller_identity.current.account_id}:stack/upwind*",
-            "arn:aws:cloudformation:*:${data.aws_caller_identity.current.account_id}:stack/Upwind*"
+            "arn:${data.aws_partition.current.partition}:cloudformation:*:${data.aws_caller_identity.current.account_id}:stack/upwind*",
+            "arn:${data.aws_partition.current.partition}:cloudformation:*:${data.aws_caller_identity.current.account_id}:stack/Upwind*"
           ]
           Condition = {
             # The null condition needs to be handled as a string, unlike the other conditions
@@ -491,16 +502,30 @@ resource "aws_iam_policy" "account_service_cloudformation_access_policy" {
               "cloudformation:TemplateUrl" = "true"
             }
           }
+        },
+        {
+          Sid = "AccessUpwindS3CloudformationBucket",
+          # This policy is required to allow Cloudformation to fetch the template from the Upwind S3 bucket.
+          Effect = "Allow",
+          Action = [
+            "s3:GetObject"
+          ],
+          Resource = [
+            "arn:${data.aws_partition.current.partition}:s3:::get.upwind.io/cfn/templates/*"
+          ],
+          Condition = {
+            StringEquals = {
+              "aws:ResourceAccount" : "693339160499"
+            },
+            "ForAnyValue:StringEquals" = {
+              "aws:CalledVia" : "cloudformation.amazonaws.com"
+            }
+          }
         }
       ]
     }
   )
-  tags = merge(
-    var.custom_tags,
-    {
-      "upwind:aws:Component"      = "Onboarding",
-      "upwind:aws:ReleaseVersion" = local.upwind_version
-  })
+  tags = local.common_tags
 }
 
 resource "aws_iam_role_policy_attachment" "attach_cloudformation_access_policy" {
@@ -530,7 +555,7 @@ resource "aws_iam_policy" "account_service_cloudscanner_ec2_access_policy" {
             "autoscaling:CreateLaunchConfiguration"
           ],
           Resource = [
-            "arn:aws:autoscaling:*:${data.aws_caller_identity.current.account_id}:autoScalingGroup*:autoScalingGroupName/upwind-cs-asg*"
+            "arn:${data.aws_partition.current.partition}:autoscaling:*:${data.aws_caller_identity.current.account_id}:autoScalingGroup*:autoScalingGroupName/upwind-cs-asg*"
           ],
           Condition = {
             StringEquals = {
@@ -552,7 +577,7 @@ resource "aws_iam_policy" "account_service_cloudscanner_ec2_access_policy" {
             "autoscaling:DeleteTags"
           ]
           Resource = [
-            "arn:aws:autoscaling:*:${data.aws_caller_identity.current.account_id}:autoScalingGroup*:autoScalingGroupName/upwind-cs-asg*"
+            "arn:${data.aws_partition.current.partition}:autoscaling:*:${data.aws_caller_identity.current.account_id}:autoScalingGroup*:autoScalingGroupName/upwind-cs-asg*"
           ]
           Condition = {
             StringEquals = {
@@ -569,7 +594,7 @@ resource "aws_iam_policy" "account_service_cloudscanner_ec2_access_policy" {
             "autoscaling:DeleteLaunchConfiguration"
           ]
           Resource = [
-            "arn:aws:autoscaling:*:${data.aws_caller_identity.current.account_id}:autoScalingGroup*:autoScalingGroupName/upwind-cs-asg*"
+            "arn:${data.aws_partition.current.partition}:autoscaling:*:${data.aws_caller_identity.current.account_id}:autoScalingGroup*:autoScalingGroupName/upwind-cs-asg*"
           ]
           Condition = {
             StringEquals = {
@@ -587,7 +612,7 @@ resource "aws_iam_policy" "account_service_cloudscanner_ec2_access_policy" {
             "ec2:CreateLaunchTemplateVersion"
           ]
           Resource = [
-            "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:launch-template/*"
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:launch-template/*"
           ]
           Condition = {
             StringEquals = {
@@ -608,7 +633,7 @@ resource "aws_iam_policy" "account_service_cloudscanner_ec2_access_policy" {
             "ec2:RunInstances"
           ]
           Resource = [
-            "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:launch-template/*"
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:launch-template/*"
           ]
           Condition = {
             StringEquals = {
@@ -624,19 +649,19 @@ resource "aws_iam_policy" "account_service_cloudscanner_ec2_access_policy" {
             "ec2:RunInstances"
           ]
           Resource = [
-            "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:instance/*",
-            "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:network-interface/*",
-            "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:security-group/*",
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:instance/*",
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:network-interface/*",
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:security-group/*",
             # Permit subnets from any account to be attached to the launch template. This is to facilitate subnets created
             # and shared from other accounts using AWS Resource Access Management.
-            "arn:aws:ec2:*:*:subnet/*",
-            "arn:aws:ec2:*::image/ami-*",
-            "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:volume/*",
-            "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:key-pair/*"
+            "arn:${data.aws_partition.current.partition}:ec2:*:*:subnet/*",
+            "arn:${data.aws_partition.current.partition}:ec2:*::image/ami-*",
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:volume/*",
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:key-pair/*"
           ]
           Condition = {
             ArnLike = {
-              "ec2:LaunchTemplate" = "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:launch-template/*"
+              "ec2:LaunchTemplate" = "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:launch-template/*"
             }
           }
         },
@@ -648,9 +673,9 @@ resource "aws_iam_policy" "account_service_cloudscanner_ec2_access_policy" {
             "ec2:CreateTags"
           ]
           Resource = [
-            "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:instance/*",
-            "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:volume/*",
-            "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:network-interface/*"
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:instance/*",
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:volume/*",
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:network-interface/*"
           ]
           Condition = {
             StringEquals = {
@@ -668,7 +693,7 @@ resource "aws_iam_policy" "account_service_cloudscanner_ec2_access_policy" {
             "ec2:CreateSecurityGroup"
           ]
           Resource = [
-            "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:security-group/*"
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:security-group/*"
           ]
           Condition = {
             StringEquals = {
@@ -685,7 +710,7 @@ resource "aws_iam_policy" "account_service_cloudscanner_ec2_access_policy" {
           Resource = [
             # Permit VPCs from any account to be attached to the launch template. This is to facilitate VPCs created
             # and shared from other accounts within the account using AWS Resource Access Management.
-            "arn:aws:ec2:*:*:vpc/*"
+            "arn:${data.aws_partition.current.partition}:ec2:*:*:vpc/*"
 
           ]
         },
@@ -703,7 +728,7 @@ resource "aws_iam_policy" "account_service_cloudscanner_ec2_access_policy" {
             "ec2:DeleteTags"
           ]
           Resource = [
-            "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:security-group/*"
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:security-group/*"
           ]
           Condition = {
             StringEquals = {
@@ -715,12 +740,7 @@ resource "aws_iam_policy" "account_service_cloudscanner_ec2_access_policy" {
     }
   )
 
-  tags = merge(
-    var.custom_tags,
-    {
-      "upwind:aws:Component"      = "Onboarding",
-      "upwind:aws:ReleaseVersion" = local.upwind_version
-  })
+  tags = local.common_tags
 }
 
 resource "aws_iam_role_policy_attachment" "attach_cloudscanner_ec2_access_policy" {
@@ -750,9 +770,9 @@ resource "aws_iam_policy" "account_service_cloudscanner_ec2_network_permissions_
             "ec2:CreateVpcEndpoint"
           ]
           Resource = [
-            "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:vpc/*",
-            "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:vpc-endpoint/*",
-            "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:route-table/*"
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:vpc/*",
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:vpc-endpoint/*",
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:route-table/*"
           ]
           Condition = {
             StringEquals = {
@@ -771,8 +791,8 @@ resource "aws_iam_policy" "account_service_cloudscanner_ec2_network_permissions_
             "ec2:CreateVpcEndpoint"
           ]
           Resource = [
-            "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:vpc/*",
-            "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:route-table/*"
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:vpc/*",
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:route-table/*"
           ]
         },
         {
@@ -786,8 +806,8 @@ resource "aws_iam_policy" "account_service_cloudscanner_ec2_network_permissions_
             "ec2:DeleteVpcEndpoints"
           ]
           Resource = [
-            "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:vpc/*",
-            "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:vpc-endpoint/*"
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:vpc/*",
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:vpc-endpoint/*"
           ]
           Condition = {
             StringEquals = {
@@ -806,7 +826,7 @@ resource "aws_iam_policy" "account_service_cloudscanner_ec2_network_permissions_
             "ec2:CreateNatGateway"
           ]
           Resource = [
-            "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:natgateway/*"
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:natgateway/*"
           ]
           Condition = {
             StringEquals = {
@@ -823,8 +843,8 @@ resource "aws_iam_policy" "account_service_cloudscanner_ec2_network_permissions_
             "ec2:CreateNatGateway"
           ]
           Resource = [
-            "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:elastic-ip/*",
-            "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:subnet/*"
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:elastic-ip/*",
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:subnet/*"
           ]
         },
         {
@@ -835,7 +855,7 @@ resource "aws_iam_policy" "account_service_cloudscanner_ec2_network_permissions_
             "ec2:DeleteNatGateway"
           ]
           Resource = [
-            "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:natgateway/*"
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:natgateway/*"
           ]
           Condition = {
             StringEquals = {
@@ -852,7 +872,7 @@ resource "aws_iam_policy" "account_service_cloudscanner_ec2_network_permissions_
             "ec2:CreateInternetGateway"
           ]
           Resource = [
-            "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:internet-gateway/*"
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:internet-gateway/*"
           ]
           Condition = {
             StringEquals = {
@@ -870,7 +890,7 @@ resource "aws_iam_policy" "account_service_cloudscanner_ec2_network_permissions_
             "ec2:DeleteInternetGateway"
           ]
           Resource = [
-            "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:internet-gateway/*"
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:internet-gateway/*"
           ]
           Condition = {
             StringEquals = {
@@ -889,8 +909,8 @@ resource "aws_iam_policy" "account_service_cloudscanner_ec2_network_permissions_
             "ec2:CreateSubnet"
           ]
           Resource = [
-            "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:elastic-ip/*",
-            "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:route-table/*"
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:elastic-ip/*",
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:route-table/*"
           ]
           Condition = {
             StringEquals = {
@@ -908,9 +928,9 @@ resource "aws_iam_policy" "account_service_cloudscanner_ec2_network_permissions_
             "ec2:AttachInternetGateway"
           ]
           Resource = [
-            "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:route-table/*",
-            "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:vpc/*",
-            "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:subnet/*"
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:route-table/*",
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:vpc/*",
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:subnet/*"
           ]
         },
         {
@@ -927,10 +947,10 @@ resource "aws_iam_policy" "account_service_cloudscanner_ec2_network_permissions_
             "ec2:DetachInternetGateway"
           ]
           Resource = [
-            "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:elastic-ip/*",
-            "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:route-table/*",
-            "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:subnet/*",
-            "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:vpc/*"
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:elastic-ip/*",
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:route-table/*",
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:subnet/*",
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:vpc/*"
           ]
           Condition = {
             StringEquals = {
@@ -947,13 +967,13 @@ resource "aws_iam_policy" "account_service_cloudscanner_ec2_network_permissions_
             "ec2:DeleteTags"
           ]
           Resource = [
-            "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:internet-gateway/*",
-            "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:elastic-ip/*",
-            "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:route-table/*",
-            "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:subnet/*",
-            "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:vpc/*",
-            "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:natgateway/*",
-            "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:vpc-endpoint/*"
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:internet-gateway/*",
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:elastic-ip/*",
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:route-table/*",
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:subnet/*",
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:vpc/*",
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:natgateway/*",
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:vpc-endpoint/*"
           ]
           Condition = {
             StringEquals = {
@@ -965,12 +985,7 @@ resource "aws_iam_policy" "account_service_cloudscanner_ec2_network_permissions_
     }
   )
 
-  tags = merge(
-    var.custom_tags,
-    {
-      "upwind:aws:Component"      = "Onboarding",
-      "upwind:aws:ReleaseVersion" = local.upwind_version
-  })
+  tags = local.common_tags
 }
 
 resource "aws_iam_role_policy_attachment" "attach_cloudscanner_ec2_network_permissions_access_policy" {
@@ -1026,7 +1041,7 @@ resource "aws_iam_policy" "account_service_cloudscanner_access_policy" {
             "kms:UntagResource"
           ]
           Resource = [
-            "arn:aws:kms:*:${data.aws_caller_identity.current.account_id}:key/*"
+            "arn:${data.aws_partition.current.partition}:kms:*:${data.aws_caller_identity.current.account_id}:key/*"
           ]
           Condition = {
             StringEquals = {
@@ -1043,7 +1058,7 @@ resource "aws_iam_policy" "account_service_cloudscanner_access_policy" {
             "kms:PutKeyPolicy"
           ]
           Resource = [
-            "arn:aws:kms:*:${data.aws_caller_identity.current.account_id}:key/*"
+            "arn:${data.aws_partition.current.partition}:kms:*:${data.aws_caller_identity.current.account_id}:key/*"
           ]
           Condition = {
             StringEquals = {
@@ -1059,7 +1074,7 @@ resource "aws_iam_policy" "account_service_cloudscanner_access_policy" {
             "kms:ScheduleKeyDeletion"
           ]
           Resource = [
-            "arn:aws:kms:*:${data.aws_caller_identity.current.account_id}:key/*"
+            "arn:${data.aws_partition.current.partition}:kms:*:${data.aws_caller_identity.current.account_id}:key/*"
           ]
           Condition = {
             StringEquals = {
@@ -1081,8 +1096,8 @@ resource "aws_iam_policy" "account_service_cloudscanner_access_policy" {
             "kms:DeleteAlias"
           ]
           Resource = [
-            "arn:aws:kms:*:${data.aws_caller_identity.current.account_id}:alias/csca-key-*",
-            "arn:aws:kms:*:${data.aws_caller_identity.current.account_id}:key/*"
+            "arn:${data.aws_partition.current.partition}:kms:*:${data.aws_caller_identity.current.account_id}:alias/csca-key-*",
+            "arn:${data.aws_partition.current.partition}:kms:*:${data.aws_caller_identity.current.account_id}:key/*"
           ]
         },
         {
@@ -1103,8 +1118,8 @@ resource "aws_iam_policy" "account_service_cloudscanner_access_policy" {
           # Grant permissions to only create logs with the following paths. The full log group names are not known when
           # when creating the log groups.
           Resource = [
-            "arn:aws:logs:*:${data.aws_caller_identity.current.account_id}:log-group:/aws/ec2/system-logs/upwind-cs-ucsc-*",
-            "arn:aws:logs:*:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/upwind-cs-lambda-ucsc-*"
+            "arn:${data.aws_partition.current.partition}:logs:*:${data.aws_caller_identity.current.account_id}:log-group:/aws/ec2/system-logs/upwind-cs-ucsc-*",
+            "arn:${data.aws_partition.current.partition}:logs:*:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/upwind-cs-lambda-ucsc-*"
           ]
         },
         {
@@ -1130,9 +1145,9 @@ resource "aws_iam_policy" "account_service_cloudscanner_access_policy" {
             "lambda:RemovePermission"
           ]
           Resource = [
-            "arn:aws:lambda:*:${data.aws_caller_identity.current.account_id}:function:upwind-cs-lambda-ucsc-*",
-            "arn:aws:lambda:*:${data.aws_caller_identity.current.account_id}:function:upwind-cs-ss-lambda-ucsc-*",
-            "arn:aws:lambda:*:${data.aws_caller_identity.current.account_id}:function:upwind-cs-updater-ucsc-*"
+            "arn:${data.aws_partition.current.partition}:lambda:*:${data.aws_caller_identity.current.account_id}:function:upwind-cs-lambda-ucsc-*",
+            "arn:${data.aws_partition.current.partition}:lambda:*:${data.aws_caller_identity.current.account_id}:function:upwind-cs-ss-lambda-ucsc-*",
+            "arn:${data.aws_partition.current.partition}:lambda:*:${data.aws_caller_identity.current.account_id}:function:upwind-cs-updater-ucsc-*"
           ]
         },
         {
@@ -1144,8 +1159,8 @@ resource "aws_iam_policy" "account_service_cloudscanner_access_policy" {
             "events:UntagResource"
           ]
           Resource = [
-            "arn:aws:events:*:${data.aws_caller_identity.current.account_id}:rule/CloudScanner*",
-            "arn:aws:events:*:${data.aws_caller_identity.current.account_id}:rule/upwind-cloud-scanner-ucsc-CloudScanner*"
+            "arn:${data.aws_partition.current.partition}:events:*:${data.aws_caller_identity.current.account_id}:rule/CloudScanner*",
+            "arn:${data.aws_partition.current.partition}:events:*:${data.aws_caller_identity.current.account_id}:rule/upwind-cloud-scanner-ucsc-CloudScanner*"
           ]
           Condition = {
             StringEquals = {
@@ -1162,8 +1177,8 @@ resource "aws_iam_policy" "account_service_cloudscanner_access_policy" {
             "events:UntagResource"
           ]
           Resource = [
-            "arn:aws:events:*:${data.aws_caller_identity.current.account_id}:rule/CloudScanner*",
-            "arn:aws:events:*:${data.aws_caller_identity.current.account_id}:rule/upwind-cloud-scanner-ucsc-CloudScanner*"
+            "arn:${data.aws_partition.current.partition}:events:*:${data.aws_caller_identity.current.account_id}:rule/CloudScanner*",
+            "arn:${data.aws_partition.current.partition}:events:*:${data.aws_caller_identity.current.account_id}:rule/upwind-cloud-scanner-ucsc-CloudScanner*"
           ]
           Condition = {
             StringEquals = {
@@ -1180,11 +1195,14 @@ resource "aws_iam_policy" "account_service_cloudscanner_access_policy" {
             "s3:GetObject"
           ],
           Resource = [
-            "arn:aws:s3:::upwind-serverless-functions-*/integrations/cloudscanner/*"
+            "arn:${data.aws_partition.current.partition}:s3:::upwind-serverless-functions-*/integrations/cloudscanner/*"
           ],
           Condition = {
             StringEquals = {
               "aws:ResourceAccount" : "693339160499"
+            },
+            "ForAnyValue:StringEquals" = {
+              "aws:CalledVia" : "cloudformation.amazonaws.com"
             }
           }
         },
@@ -1259,7 +1277,7 @@ resource "aws_iam_policy" "account_service_cloudscanner_access_policy" {
             "iam:CreateServiceLinkedRole"
           ]
           Resource = [
-            "arn:aws:iam::*:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling*"
+            "arn:${data.aws_partition.current.partition}:iam::*:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling*"
           ]
           Condition = {
             StringLike = {
@@ -1275,18 +1293,13 @@ resource "aws_iam_policy" "account_service_cloudscanner_access_policy" {
             "iam:AttachRolePolicy",
             "iam:PutRolePolicy"
           ]
-          Resource = "arn:aws:iam::*:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling*"
+          Resource = "arn:${data.aws_partition.current.partition}:iam::*:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling*"
         }
       ]
     }
   )
 
-  tags = merge(
-    var.custom_tags,
-    {
-      "upwind:aws:Component"      = "Onboarding",
-      "upwind:aws:ReleaseVersion" = local.upwind_version
-  })
+  tags = local.common_tags
 }
 
 resource "aws_iam_role_policy_attachment" "attach_cloudscanner_access_policy" {
@@ -1306,15 +1319,22 @@ resource "aws_iam_policy" "account_service_agentless_k8s_access_entries_access_p
       Version = "2012-10-17"
       Statement = [
         {
-          Sid      = "DescribeCluster"
-          Effect   = "Allow"
-          Action   = ["eks:DescribeCluster"]
+          Sid = "DescribeCluster"
+          # Determine cluster endpoint, CA data, if cluster is public or private
+          Effect = "Allow"
+          Action = [
+            "eks:DescribeCluster"
+          ]
           Resource = "arn:${data.aws_partition.current.partition}:eks:*:${data.aws_caller_identity.current.account_id}:cluster/*"
         },
         {
-          Sid      = "SelfProvisionAccessEntry"
-          Effect   = "Allow"
-          Action   = ["eks:CreateAccessEntry"]
+          Sid = "SelfProvisionAccessEntry"
+          # Create access entry for the Upwind account service role
+          # Access entry must have a upwind:aws:CreatedByUpwind=true tag
+          Effect = "Allow"
+          Action = [
+            "eks:CreateAccessEntry"
+          ]
           Resource = "arn:${data.aws_partition.current.partition}:eks:*:${data.aws_caller_identity.current.account_id}:cluster/*"
           Condition = {
             StringEquals = {
@@ -1324,21 +1344,30 @@ resource "aws_iam_policy" "account_service_agentless_k8s_access_entries_access_p
           }
         },
         {
-          Sid      = "DescribeAccessEntry"
-          Effect   = "Allow"
-          Action   = ["eks:DescribeAccessEntry"]
+          Sid = "DescribeAccessEntry"
+          # Describe Upwind access entries
+          Effect = "Allow"
+          Action = [
+            "eks:DescribeAccessEntry"
+          ]
           Resource = "arn:${data.aws_partition.current.partition}:eks:*:${data.aws_caller_identity.current.account_id}:access-entry/*/role/${data.aws_caller_identity.current.account_id}/${var.account_service_role_name}/*"
         },
         {
-          Sid      = "ListAssociatedAccessPolicies"
-          Effect   = "Allow"
-          Action   = ["eks:ListAssociatedAccessPolicies"]
+          Sid = "ListAssociatedAccessPolicies"
+          # List associated access policies for Upwind access entries
+          Effect = "Allow"
+          Action = [
+            "eks:ListAssociatedAccessPolicies"
+          ]
           Resource = "arn:${data.aws_partition.current.partition}:eks:*:${data.aws_caller_identity.current.account_id}:access-entry/*/role/${data.aws_caller_identity.current.account_id}/${var.account_service_role_name}/*"
         },
         {
-          Sid      = "AllowTaggingOnCreation"
-          Effect   = "Allow"
-          Action   = ["eks:TagResource"]
+          Sid = "AllowTaggingOnCreation"
+          # Allow setting upwind:aws:CreatedByUpwind=true tag on Upwind access entries
+          Effect = "Allow"
+          Action = [
+            "eks:TagResource"
+          ]
           Resource = "arn:${data.aws_partition.current.partition}:eks:*:${data.aws_caller_identity.current.account_id}:access-entry/*/role/${data.aws_caller_identity.current.account_id}/${var.account_service_role_name}/*"
           Condition = {
             StringEquals = {
@@ -1347,9 +1376,12 @@ resource "aws_iam_policy" "account_service_agentless_k8s_access_entries_access_p
           }
         },
         {
-          Sid      = "AssociateViewOnlyPolicy"
-          Effect   = "Allow"
-          Action   = ["eks:AssociateAccessPolicy"]
+          Sid = "AssociateViewOnlyPolicy"
+          # Allow associating AmazonEKSViewPolicy and AmazonEKSAdminViewPolicy to Upwind access entries.
+          Effect = "Allow"
+          Action = [
+            "eks:AssociateAccessPolicy"
+          ]
           Resource = "arn:${data.aws_partition.current.partition}:eks:*:${data.aws_caller_identity.current.account_id}:access-entry/*/role/${data.aws_caller_identity.current.account_id}/${var.account_service_role_name}/*"
           Condition = {
             StringEquals = {
@@ -1362,9 +1394,13 @@ resource "aws_iam_policy" "account_service_agentless_k8s_access_entries_access_p
           }
         },
         {
-          Sid      = "CleanupSelfCreatedEntries"
-          Effect   = "Allow"
-          Action   = ["eks:DeleteAccessEntry", "eks:DisassociateAccessPolicy"]
+          Sid = "CleanupSelfCreatedEntries"
+          # Delete access entry and disassociate access policy for Upwind access entries
+          Effect = "Allow"
+          Action = [
+            "eks:DeleteAccessEntry",
+            "eks:DisassociateAccessPolicy"
+          ]
           Resource = "arn:${data.aws_partition.current.partition}:eks:*:${data.aws_caller_identity.current.account_id}:access-entry/*/role/${data.aws_caller_identity.current.account_id}/${var.account_service_role_name}/*"
           Condition = {
             StringEquals = {
@@ -1376,12 +1412,7 @@ resource "aws_iam_policy" "account_service_agentless_k8s_access_entries_access_p
     }
   )
 
-  tags = merge(
-    var.custom_tags,
-    {
-      "upwind:aws:Component"      = "Onboarding",
-      "upwind:aws:ReleaseVersion" = local.upwind_version
-  })
+  tags = local.common_tags
 }
 
 resource "aws_iam_role_policy_attachment" "attach_agentless_k8s_access_entries_access_policy" {
@@ -1401,25 +1432,32 @@ resource "aws_iam_policy" "account_service_agentless_k8s_ssm_access_policy" {
       Version = "2012-10-17"
       Statement = [
         {
-          Sid      = "DescribeCluster"
-          Effect   = "Allow"
-          Action   = ["eks:DescribeCluster"]
+          Sid = "DescribeCluster"
+          # Determine cluster endpoint, CA data, if cluster is public or private
+          Effect = "Allow"
+          Action = [
+            "eks:DescribeCluster"
+          ]
           Resource = "arn:${data.aws_partition.current.partition}:eks:*:${data.aws_caller_identity.current.account_id}:cluster/*"
         },
         {
-          Sid      = "EC2DescribeInstances"
+          Sid = "EC2DescribeInstances"
+          # Used to find potential SSM targets (cluster instances, instances in the cluster security group).
           Effect   = "Allow"
           Action   = "ec2:DescribeInstances"
           Resource = "*"
         },
         {
-          Sid      = "SSMDescribeInstanceInformation"
+          Sid = "SSMDescribeInstanceInformation"
+          # Used to query SSM for node status, to find available SSM targets.
           Effect   = "Allow"
           Action   = "ssm:DescribeInstanceInformation"
           Resource = "*"
         },
         {
-          Sid    = "SSMStartSession"
+          Sid = "SSMStartSession"
+          # Permission to start an SSM session. Allowed on all instances in the account, further scoped by the
+          # following Deny statement, and restricted to the StartPortForwardingSessionToRemoteHost document.
           Effect = "Allow"
           Action = "ssm:StartSession"
           Resource = [
@@ -1433,7 +1471,9 @@ resource "aws_iam_policy" "account_service_agentless_k8s_ssm_access_policy" {
           }
         },
         {
-          Sid      = "DenySSMStartSession"
+          Sid = "DenySSMStartSession"
+          # Only allow SSM StartSession on nodes that are part of an EKS cluster
+          # or have the upwind:ssm-target tag.
           Effect   = "Deny"
           Action   = "ssm:StartSession"
           Resource = "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:instance/*"
@@ -1446,21 +1486,22 @@ resource "aws_iam_policy" "account_service_agentless_k8s_ssm_access_policy" {
           }
         },
         {
-          Sid      = "SSMSessionManagement"
-          Effect   = "Allow"
-          Action   = ["ssm:TerminateSession", "ssm:ResumeSession"]
-          Resource = ["arn:${data.aws_partition.current.partition}:ssm:*:${data.aws_caller_identity.current.account_id}:session/upwind*"]
+          Sid = "SSMSessionManagement"
+          # Allow session management on Upwind sessions
+          Effect = "Allow"
+          Action = [
+            "ssm:TerminateSession",
+            "ssm:ResumeSession"
+          ]
+          Resource = [
+            "arn:${data.aws_partition.current.partition}:ssm:*:${data.aws_caller_identity.current.account_id}:session/upwind*"
+          ]
         }
       ]
     }
   )
 
-  tags = merge(
-    var.custom_tags,
-    {
-      "upwind:aws:Component"      = "Onboarding",
-      "upwind:aws:ReleaseVersion" = local.upwind_version
-  })
+  tags = local.common_tags
 }
 
 resource "aws_iam_role_policy_attachment" "attach_agentless_k8s_ssm_access_policy" {

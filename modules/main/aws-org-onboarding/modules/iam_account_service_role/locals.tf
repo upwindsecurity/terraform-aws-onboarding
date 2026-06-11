@@ -1,6 +1,11 @@
 locals {
   upwind_version = "VERSION_UNDEFINED"
 
+  common_tags = merge(var.custom_tags, {
+    "upwind:aws:Component"      = "Onboarding",
+    "upwind:aws:ReleaseVersion" = local.upwind_version
+  })
+
   upwind_cfn_sources = [
     "https://s3.amazonaws.com/get.upwind.io/cfn/templates/*",
     "https://s3.us-east-1.amazonaws.com/get.upwind.io/cfn/templates/*"
@@ -14,5 +19,6 @@ locals {
   )
 
   agentless_k8s_access_entries_enabled = var.upwind_agentless_k8s_access_entries_enabled && local.agentless_k8s_account_allowed
-  agentless_k8s_ssm_enabled            = var.upwind_agentless_k8s_ssm_enabled && local.agentless_k8s_account_allowed
+
+  agentless_k8s_ssm_enabled = var.upwind_agentless_k8s_ssm_enabled && local.agentless_k8s_account_allowed
 }

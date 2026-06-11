@@ -16,13 +16,7 @@ resource "aws_iam_role" "cloudscanner_execution_role" {
           Action = "sts:AssumeRole"
           Condition = {
             ArnLike = {
-              # In SaaS mode trust the customer assume role (assumed by Upwind SaaS).
-              # In non-SaaS mode trust the CloudScanner admin role in the orchestrator account.
-              "aws:PrincipalArn" = var.is_saas_mode ? (
-                "arn:${data.aws_partition.current.partition}:iam::${var.orchestrator_account_id}:role/${var.cloudscanner_saas_customer_assume_role_name}"
-                ) : (
-                "arn:${data.aws_partition.current.partition}:iam::${var.orchestrator_account_id}:role/${var.cloudscanner_admin_role_name}"
-              )
+              "aws:PrincipalArn" = "arn:${data.aws_partition.current.partition}:iam::${var.orchestrator_account_id}:role/${var.cloudscanner_admin_role_name}"
             }
           }
         }
@@ -82,11 +76,12 @@ resource "aws_iam_role_policy" "cloudscanner_execution_role_cloudscanner_access_
         },
         {
           Sid = "PermitEBSToEncyptWithUpwindCMK"
-          # Permit re-encryption using CloudScanner CMK in central account
+          # Permit decryption / re-encryption using CloudScanner CMK in central account
           Effect = "Allow"
           Action = [
             "kms:DescribeKey",
             "kms:Encrypt",
+            "kms:Decrypt",
             "kms:CreateGrant",
             "kms:ReEncryptTo",
             "kms:GenerateDataKey*"
@@ -215,7 +210,7 @@ resource "aws_iam_role_policy" "cloudscanner_execution_role_cloudscanner_access_
           Resource = "arn:${data.aws_partition.current.partition}:ec2:*::snapshot/*"
           Condition = {
             StringEquals = {
-              "aws:Resource/UpwindComponent" = "CloudScanner"
+              "aws:ResourceTag/UpwindComponent" = "CloudScanner"
             }
           }
         },
@@ -249,7 +244,23 @@ resource "aws_iam_role_policy" "cloudscanner_execution_role_cloudscanner_access_
               "ec2:ResourceTag/UpwindComponent" = "CloudScanner"
             }
           }
-        }
+        },
+        {
+          # EBS Direct Permissions (for marketplace AMIs)
+          Effect = "Allow",
+          Action = [
+            "ebs:ListSnapshotBlocks",
+            "ebs:GetSnapshotBlock"
+          ],
+          Resource = [
+            "arn:aws:ec2:*:*:snapshot/*"
+          ],
+          Condition = {
+            "StringEquals" = {
+              "aws:ResourceTag/UpwindComponent" = "CloudScanner"
+            }
+          }
+        },
       ]
     }
   )

@@ -130,6 +130,32 @@ intend to provide the network stack configuration.
   # Full policy name validation is delegated to the sub modules.
 }
 
+variable "account_service_agentless_k8s_access_entries_policy_name" {
+  description = "The base name to be used for the agentless Kubernetes access entries policy in the account service role."
+  type        = string
+  default     = "UpwindAccountServiceAgentlessK8sAEPolicy"
+
+  validation {
+    condition     = can(regex("^[\\w+=,.@-]+$", var.account_service_agentless_k8s_access_entries_policy_name))
+    error_message = "The agentless Kubernetes access entries policy base name contains invalid characters."
+  }
+
+  # Full policy name validation is delegated to the sub modules.
+}
+
+variable "account_service_agentless_k8s_ssm_policy_name" {
+  description = "The base name to be used for the agentless Kubernetes SSM policy in the account service role."
+  type        = string
+  default     = "UpwindAccountServiceAgentlessK8sSSMPolicy"
+
+  validation {
+    condition     = can(regex("^[\\w+=,.@-]+$", var.account_service_agentless_k8s_ssm_policy_name))
+    error_message = "The agentless Kubernetes SSM policy base name contains invalid characters."
+  }
+
+  # Full policy name validation is delegated to the sub modules.
+}
+
 variable "cloudscanner_administration_role_name" {
   description = "The base name of the IAM administration role to be created, used for cloud scanning operations."
   type        = string
@@ -177,7 +203,8 @@ variable "upwind_cloudscanner_auth_secret_arn" {
   type        = string
   default     = null
   validation {
-    condition     = can(regex("^arn:aws:secretsmanager:[a-z]{2}-[a-z]+-\\d:[0-9]{12}:secret:[a-zA-Z0-9_./-]+-[a-zA-Z0-9]+$", var.upwind_cloudscanner_auth_secret_arn)) || var.upwind_cloudscanner_auth_secret_arn == null
+    # wildcard following '^arn:' accounts for use of AWS partitions
+    condition     = can(regex("^arn:.+:secretsmanager:[a-z]{2}-[a-z]+-\\d:[0-9]{12}:secret:[a-zA-Z0-9_./-]+-[a-zA-Z0-9]+$", var.upwind_cloudscanner_auth_secret_arn)) || var.upwind_cloudscanner_auth_secret_arn == null
     error_message = "The secret ARN must be a valid AWS Secrets Manager ARN."
   }
 }
@@ -236,19 +263,27 @@ variable "upwind_include_ec2_network_management_permissions" {
   default     = true
 }
 
-variable "custom_tags" {
-  description = "Custom tags which shall be applied to each resource created by the module."
-  type        = map(string)
-  default     = {}
-}
-
-#######################################################################################
-# The following variables configure Agentless Kubernetes support
-#######################################################################################
 variable "upwind_agentless_k8s_access_entries_enabled" {
   description = "Enable the creation of the policy for agentless Kubernetes resource fetching using EKS access entries as the authentication method."
   type        = bool
   default     = false
+}
+
+variable "current_account_id" {
+  description = "(Optional). Explicit account ID for AWS account being configured. Provide this when using upwind_agentless_k8s_account_whitelist so terraform can determine resource creation during plan"
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.current_account_id == null || can(regex("^[0-9]{12}$", var.current_account_id))
+    error_message = "current_account_id must be a 12-digit AWS account ID."
+  }
+}
+
+variable "upwind_agentless_k8s_account_whitelist" {
+  description = "(Optional). If set, this will limit the accounts in which the agentless Kubernetes access entry and SSM permissions are created."
+  type        = list(string)
+  default     = []
 }
 
 variable "upwind_agentless_k8s_ssm_enabled" {
@@ -263,33 +298,12 @@ variable "upwind_agentless_k8s_eks_admin_view_policy_enabled" {
   default     = true
 }
 
-variable "upwind_agentless_k8s_account_whitelist" {
-  description = "(Optional). If set, limits the accounts in which the agentless Kubernetes permissions are created."
-  type        = list(string)
-  default     = []
+variable "custom_tags" {
+  description = "Custom tags which shall be applied to each resource created by the module."
+  type        = map(string)
+  default     = {}
 }
 
-variable "account_service_agentless_k8s_access_entries_policy_name" {
-  description = "The base name to be used for the agentless Kubernetes access entries policy in the account service role."
-  type        = string
-  default     = "UpwindAccountServiceAgentlessK8sAEPolicy"
-
-  validation {
-    condition     = can(regex("^[\\w+=,.@-]+$", var.account_service_agentless_k8s_access_entries_policy_name))
-    error_message = "The agentless Kubernetes access entries policy base name contains invalid characters."
-  }
-}
-
-variable "account_service_agentless_k8s_ssm_policy_name" {
-  description = "The base name to be used for the agentless Kubernetes SSM policy in the account service role."
-  type        = string
-  default     = "UpwindAccountServiceAgentlessK8sSSMPolicy"
-
-  validation {
-    condition     = can(regex("^[\\w+=,.@-]+$", var.account_service_agentless_k8s_ssm_policy_name))
-    error_message = "The agentless Kubernetes SSM policy base name contains invalid characters."
-  }
-}
 
 #######################################################################################
 # The following variables are used as part of the Org Discovery role registration
@@ -355,35 +369,4 @@ variable "aws_iam_role_creation_wait_time" {
   description = "The duration of time to wait for the completion of the IAM role creation."
   type        = string
   default     = "20s"
-}
-
-#######################################################################################
-# The following variables configure SaaS deployment mode
-#######################################################################################
-variable "is_saas" {
-  description = "When true, configures the module for Upwind SaaS-managed CloudScanner deployment. In SaaS mode the CloudScanner admin role and credentials secret are not created; instead a customer assume role is created that the Upwind SaaS account can assume."
-  type        = bool
-  default     = false
-}
-
-variable "cloudscanner_saas_trusted_account_id" {
-  description = "The AWS account ID of the Upwind SaaS account that will assume the customer assume role. Required when is_saas = true."
-  type        = string
-  default     = null
-
-  validation {
-    condition     = var.cloudscanner_saas_trusted_account_id == null || can(regex("^[0-9]{12}$", var.cloudscanner_saas_trusted_account_id))
-    error_message = "cloudscanner_saas_trusted_account_id must be a 12-digit AWS account ID."
-  }
-}
-
-variable "cloudscanner_saas_customer_assume_role_name" {
-  description = "Base name of the IAM role created in the orchestrator account that the Upwind SaaS account assumes to perform scanning. Only used when is_saas = true."
-  type        = string
-  default     = "UpwindCloudScannerCustomerAssumeRole"
-
-  validation {
-    condition     = can(regex("^[a-zA-Z0-9-_]+$", var.cloudscanner_saas_customer_assume_role_name))
-    error_message = "cloudscanner_saas_customer_assume_role_name contains invalid characters."
-  }
 }

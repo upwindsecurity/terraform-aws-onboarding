@@ -64,6 +64,11 @@ content: |-
   > [!TIP]
   > This Account Service role should be created in all accounts which are to be audited or scanned - which may optionally include the management account. If configuring 
   > an orchestrator account the Account Service role must be created in the account with the elevated permissions.
+  > [!IMPORTANT]
+  > If `upwind_agentless_k8s_account_whitelist` is set and either
+  > `upwind_agentless_k8s_access_entries_enabled` or `upwind_agentless_k8s_ssm_enabled`
+  > is enabled, you must also set `current_account_id`. Terraform must know the account ID
+  > during plan so it can determine whether to create the agentless Kubernetes IAM policies.
   ### CloudScanner Administrator role
   This role is only created in the orchestrator account - if one has been defined. It is the roll granted to the 
   CloudScanner resources (Lambda's, ASG and EC2 instances) allowing them to function.
@@ -136,6 +141,14 @@ content: |-
   custom tags can be applied to the module:
   ```hcl
   {{ include ".docs/example3.tff" }}
+  ```
+
+  The following example shows how to enable agentless Kubernetes permissions for only a subset
+  of accounts. When using `upwind_agentless_k8s_account_whitelist`, you must also provide
+  `current_account_id` so Terraform can evaluate resource creation during plan.
+
+  ```hcl
+  {{ include ".docs/example4.tff" }}
   ```
   {{ .Header }}
   {{ .Providers }}

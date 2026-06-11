@@ -1,5 +1,5 @@
 locals {
-  # The upwind_version is defined as part of the release management and is used for version identifification.
+  # The upwind_version is defined as part of the release management and is used for version identification.
   # It must be maintained.
   upwind_version = "VERSION_UNDEFINED"
 
@@ -17,10 +17,12 @@ locals {
   cloudscanner_secret_name               = "${var.credentials_secret_name_prefix}${var.cloudscanner_secret_name}${local.suffix}"
 
   # Create managed policy names
-  account_service_role_cloudformation_policy_name      = "${var.account_service_cloudformation_policy_name}${local.suffix}"
-  account_service_role_cloudscanner_ec2_policy_name    = "${var.account_service_cloudscanner_ec2_policy_name}${local.suffix}"
-  account_service_role_cloudscanner_policy_name        = "${var.account_service_cloudscanner_policy_name}${local.suffix}"
-  account_service_cloudscanner_ec2_network_policy_name = "${var.account_service_cloudscanner_ec2_network_policy_name}${local.suffix}"
+  account_service_role_cloudformation_policy_name          = "${var.account_service_cloudformation_policy_name}${local.suffix}"
+  account_service_role_cloudscanner_ec2_policy_name        = "${var.account_service_cloudscanner_ec2_policy_name}${local.suffix}"
+  account_service_role_cloudscanner_policy_name            = "${var.account_service_cloudscanner_policy_name}${local.suffix}"
+  account_service_cloudscanner_ec2_network_policy_name     = "${var.account_service_cloudscanner_ec2_network_policy_name}${local.suffix}"
+  account_service_agentless_k8s_access_entries_policy_name = "${var.account_service_agentless_k8s_access_entries_policy_name}${local.suffix}"
+  account_service_agentless_k8s_ssm_policy_name            = "${var.account_service_agentless_k8s_ssm_policy_name}${local.suffix}"
 
   # Condition used to determine if the module is being applied to the management account
   condition_has_management_account_id = !(var.management_account_id == null)

@@ -50,7 +50,8 @@ variable "role_arn" {
   type        = string
 
   validation {
-    condition     = can(regex("^arn:aws:iam::[0-9]{12}:role/[a-zA-Z0-9+=,.@_-]+$", var.role_arn))
+    # wildcard following '^arn:' accounts for use of AWS partitions
+    condition     = can(regex("^arn:.+:iam::[0-9]{12}:role/[a-zA-Z0-9+=,.@_-]+$", var.role_arn))
     error_message = "The role ARN is invalid."
   }
 }
