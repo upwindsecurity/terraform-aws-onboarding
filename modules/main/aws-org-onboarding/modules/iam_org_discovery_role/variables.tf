@@ -95,21 +95,3 @@ variable "upwind_feature_dspm_enabled" {
   description = "Enable the creation of roles to enable DSPM scanning. This includes permissions to access the the contents of S3 buckets."
   type        = bool
 }
-
-variable "upwind_cloudscanner_management_enabled" {
-  description = "Whether CloudScanner management permissions are enabled. Sets the upwind:aws:HasCSAutomationPermissions discovery tag."
-  type        = bool
-  default     = true
-}
-
-variable "is_saas_mode" {
-  description = "Whether this is a SaaS deployment. Sets the upwind:aws:CloudScannerSaaSMode discovery tag."
-  type        = bool
-  default     = false
-}
-
-variable "cloudscanner_saas_customer_assume_role_name" {
-  description = "Name of the SaaS customer assume role. When set, added as upwind:aws:CustomerAssumeRoleName discovery tag."
-  type        = string
-  default     = null
-}
