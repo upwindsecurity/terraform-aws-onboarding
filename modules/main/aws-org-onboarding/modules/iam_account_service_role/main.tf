@@ -31,8 +31,9 @@ resource "aws_iam_role" "account_service_role" {
   tags = merge(
     var.custom_tags,
     {
-      "upwind:aws:Component"      = "Onboarding",
-      "upwind:aws:ReleaseVersion" = local.upwind_version
+      "upwind:aws:Component"            = "Onboarding",
+      "upwind:aws:ReleaseVersion"       = local.upwind_version,
+      "upwind:aws:CloudScannerSaaSMode" = var.is_saas_mode ? "Enabled" : "Disabled"
     },
     # If the role is being created with elevated permissions (non-SaaS orchestrator account),
     # add tags for CloudScanner Discovery.
@@ -45,7 +46,7 @@ resource "aws_iam_role" "account_service_role" {
       "upwind:aws:HasCSAutomationPermissions"         = var.upwind_cloudscanner_management_enabled ? "Yes" : "No"
       "upwind:aws:HasCSEC2NetworkPermissions"         = var.upwind_include_ec2_network_management_permissions ? "Yes" : "No"
     } : {},
-        # In SaaS mode, tag the account service role with the customer assume role name for discovery.
+    # In SaaS mode, tag the account service role with the customer assume role name for discovery.
     var.cloudscanner_saas_customer_assume_role_name != null ? {
       "upwind:aws:CustomerAssumeRoleName" = var.cloudscanner_saas_customer_assume_role_name
     } : {},
@@ -1293,4 +1294,178 @@ resource "aws_iam_role_policy_attachment" "attach_cloudscanner_access_policy" {
 
   role       = aws_iam_role.account_service_role.name
   policy_arn = one(aws_iam_policy.account_service_cloudscanner_access_policy[*].arn)
+}
+
+resource "aws_iam_policy" "account_service_agentless_k8s_access_entries_access_policy" {
+  count       = local.agentless_k8s_access_entries_enabled ? 1 : 0
+  name        = var.account_service_agentless_k8s_access_entries_policy_name
+  description = "Upwind Account Service IAM role policy for agentless Kubernetes resource fetching using EKS access entries as the authentication method."
+
+  policy = jsonencode(
+    {
+      Version = "2012-10-17"
+      Statement = [
+        {
+          Sid      = "DescribeCluster"
+          Effect   = "Allow"
+          Action   = ["eks:DescribeCluster"]
+          Resource = "arn:${data.aws_partition.current.partition}:eks:*:${data.aws_caller_identity.current.account_id}:cluster/*"
+        },
+        {
+          Sid      = "SelfProvisionAccessEntry"
+          Effect   = "Allow"
+          Action   = ["eks:CreateAccessEntry"]
+          Resource = "arn:${data.aws_partition.current.partition}:eks:*:${data.aws_caller_identity.current.account_id}:cluster/*"
+          Condition = {
+            StringEquals = {
+              "eks:principalArn"                          = "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:role/${var.account_service_role_name}"
+              "aws:RequestTag/upwind:aws:CreatedByUpwind" = "true"
+            }
+          }
+        },
+        {
+          Sid      = "DescribeAccessEntry"
+          Effect   = "Allow"
+          Action   = ["eks:DescribeAccessEntry"]
+          Resource = "arn:${data.aws_partition.current.partition}:eks:*:${data.aws_caller_identity.current.account_id}:access-entry/*/role/${data.aws_caller_identity.current.account_id}/${var.account_service_role_name}/*"
+        },
+        {
+          Sid      = "ListAssociatedAccessPolicies"
+          Effect   = "Allow"
+          Action   = ["eks:ListAssociatedAccessPolicies"]
+          Resource = "arn:${data.aws_partition.current.partition}:eks:*:${data.aws_caller_identity.current.account_id}:access-entry/*/role/${data.aws_caller_identity.current.account_id}/${var.account_service_role_name}/*"
+        },
+        {
+          Sid      = "AllowTaggingOnCreation"
+          Effect   = "Allow"
+          Action   = ["eks:TagResource"]
+          Resource = "arn:${data.aws_partition.current.partition}:eks:*:${data.aws_caller_identity.current.account_id}:access-entry/*/role/${data.aws_caller_identity.current.account_id}/${var.account_service_role_name}/*"
+          Condition = {
+            StringEquals = {
+              "aws:RequestTag/upwind:aws:CreatedByUpwind" = "true"
+            }
+          }
+        },
+        {
+          Sid      = "AssociateViewOnlyPolicy"
+          Effect   = "Allow"
+          Action   = ["eks:AssociateAccessPolicy"]
+          Resource = "arn:${data.aws_partition.current.partition}:eks:*:${data.aws_caller_identity.current.account_id}:access-entry/*/role/${data.aws_caller_identity.current.account_id}/${var.account_service_role_name}/*"
+          Condition = {
+            StringEquals = {
+              "eks:policyArn" = concat(
+                ["arn:${data.aws_partition.current.partition}:eks::aws:cluster-access-policy/AmazonEKSViewPolicy"],
+                var.upwind_agentless_k8s_eks_admin_view_policy_enabled ? ["arn:${data.aws_partition.current.partition}:eks::aws:cluster-access-policy/AmazonEKSAdminViewPolicy"] : []
+              )
+              "eks:principalArn" = "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:role/${var.account_service_role_name}"
+            }
+          }
+        },
+        {
+          Sid      = "CleanupSelfCreatedEntries"
+          Effect   = "Allow"
+          Action   = ["eks:DeleteAccessEntry", "eks:DisassociateAccessPolicy"]
+          Resource = "arn:${data.aws_partition.current.partition}:eks:*:${data.aws_caller_identity.current.account_id}:access-entry/*/role/${data.aws_caller_identity.current.account_id}/${var.account_service_role_name}/*"
+          Condition = {
+            StringEquals = {
+              "aws:ResourceTag/upwind:aws:CreatedByUpwind" = "true"
+            }
+          }
+        }
+      ]
+    }
+  )
+
+  tags = merge(
+    var.custom_tags,
+    {
+      "upwind:aws:Component"      = "Onboarding",
+      "upwind:aws:ReleaseVersion" = local.upwind_version
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "attach_agentless_k8s_access_entries_access_policy" {
+  count = local.agentless_k8s_access_entries_enabled ? 1 : 0
+
+  role       = aws_iam_role.account_service_role.name
+  policy_arn = one(aws_iam_policy.account_service_agentless_k8s_access_entries_access_policy[*].arn)
+}
+
+resource "aws_iam_policy" "account_service_agentless_k8s_ssm_access_policy" {
+  count       = local.agentless_k8s_ssm_enabled ? 1 : 0
+  name        = var.account_service_agentless_k8s_ssm_policy_name
+  description = "Upwind Account Service IAM role policy for agentless Kubernetes resource fetching from private EKS clusters via SSM tunnels."
+
+  policy = jsonencode(
+    {
+      Version = "2012-10-17"
+      Statement = [
+        {
+          Sid      = "DescribeCluster"
+          Effect   = "Allow"
+          Action   = ["eks:DescribeCluster"]
+          Resource = "arn:${data.aws_partition.current.partition}:eks:*:${data.aws_caller_identity.current.account_id}:cluster/*"
+        },
+        {
+          Sid      = "EC2DescribeInstances"
+          Effect   = "Allow"
+          Action   = "ec2:DescribeInstances"
+          Resource = "*"
+        },
+        {
+          Sid      = "SSMDescribeInstanceInformation"
+          Effect   = "Allow"
+          Action   = "ssm:DescribeInstanceInformation"
+          Resource = "*"
+        },
+        {
+          Sid    = "SSMStartSession"
+          Effect = "Allow"
+          Action = "ssm:StartSession"
+          Resource = [
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:instance/*",
+            "arn:${data.aws_partition.current.partition}:ssm:*:*:document/AWS-StartPortForwardingSessionToRemoteHost"
+          ]
+          Condition = {
+            BoolIfExists = {
+              "ssm:SessionDocumentAccessCheck" = "true"
+            }
+          }
+        },
+        {
+          Sid      = "DenySSMStartSession"
+          Effect   = "Deny"
+          Action   = "ssm:StartSession"
+          Resource = "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:instance/*"
+          Condition = {
+            Null = {
+              "aws:ResourceTag/aws:eks:cluster-name" = "true"
+              "aws:ResourceTag/eks:cluster-name"     = "true"
+              "aws:ResourceTag/upwind:ssm-target"    = "true"
+            }
+          }
+        },
+        {
+          Sid      = "SSMSessionManagement"
+          Effect   = "Allow"
+          Action   = ["ssm:TerminateSession", "ssm:ResumeSession"]
+          Resource = ["arn:${data.aws_partition.current.partition}:ssm:*:${data.aws_caller_identity.current.account_id}:session/upwind*"]
+        }
+      ]
+    }
+  )
+
+  tags = merge(
+    var.custom_tags,
+    {
+      "upwind:aws:Component"      = "Onboarding",
+      "upwind:aws:ReleaseVersion" = local.upwind_version
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "attach_agentless_k8s_ssm_access_policy" {
+  count = local.agentless_k8s_ssm_enabled ? 1 : 0
+
+  role       = aws_iam_role.account_service_role.name
+  policy_arn = one(aws_iam_policy.account_service_agentless_k8s_ssm_access_policy[*].arn)
 }
