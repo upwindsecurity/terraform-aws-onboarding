@@ -61,13 +61,4 @@ output "org_registration_response_state" {
   value       = one(module.register_org_discovery_role[*].org_role_register_state)
 }
 
-output "cloudscanner_saas_customer_assume_role_arn" {
-  description = "The ARN of the CloudScanner SaaS customer assume role. Only set when is_saas = true and applied to the orchestrator account."
-  value       = one(module.cloudscanner_saas_customer_assume_role[*].iam_role.arn)
-}
-
-output "cloudscanner_saas_customer_assume_role_name" {
-  description = "The name of the CloudScanner SaaS customer assume role. Only set when is_saas = true and applied to the orchestrator account."
-  value       = one(module.cloudscanner_saas_customer_assume_role[*].iam_role.name)
-}
 

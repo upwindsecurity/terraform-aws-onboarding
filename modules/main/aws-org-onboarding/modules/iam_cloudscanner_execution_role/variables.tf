@@ -36,15 +36,3 @@ variable "upwind_feature_dspm_account_whitelist" {
   default     = []
 }
 
-variable "is_saas_mode" {
-  description = "Whether this is a SaaS deployment. When true, the execution role's trust policy trusts the customer assume role instead of the admin role."
-  type        = bool
-  default     = false
-}
-
-variable "cloudscanner_saas_customer_assume_role_name" {
-  description = "Name of the SaaS customer assume role. Used in the execution role trust policy when is_saas_mode = true."
-  type        = string
-  default     = null
-}
-
