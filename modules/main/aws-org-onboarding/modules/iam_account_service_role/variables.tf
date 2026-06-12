@@ -230,6 +230,18 @@ variable "current_account_id" {
   }
 }
 
+variable "is_saas_mode" {
+  description = "Whether this is a SaaS deployment. Used to set discovery tags on the account service role."
+  type        = bool
+  default     = false
+}
+
+variable "cloudscanner_saas_customer_assume_role_name" {
+  description = "Name of the SaaS customer assume role. When set, added as a discovery tag on the account service role."
+  type        = string
+  default     = null
+}
+
 variable "account_service_agentless_k8s_access_entries_policy_name" {
   description = "The name to be used for the agentless Kubernetes access entries policy in the account service role."
   type        = string
