@@ -169,6 +169,24 @@ variable "cloudscanner_secret_arn" {
   }
 }
 
+variable "upwind_agentless_k8s_ssm_enabled" {
+  description = "Enable the creation of the policy for agentless Kubernetes resource fetching from private EKS clusters via SSM tunnels."
+  type        = bool
+  default     = false
+}
+
+variable "upwind_agentless_k8s_eks_admin_view_policy_enabled" {
+  description = "Allow the role to associate AmazonEKSAdminViewPolicy (in addition to AmazonEKSViewPolicy) on Upwind-created access entries. Only takes effect when upwind_agentless_k8s_access_entries_enabled is true."
+  type        = bool
+  default     = true
+}
+
+variable "upwind_agentless_k8s_account_whitelist" {
+  description = "(Optional). If set, limits the accounts in which the agentless Kubernetes permissions are created."
+  type        = list(string)
+  default     = []
+}
+
 variable "apply_for_orchestrator_account" {
   description = "Create the additional roles for the orchestrator account."
   type        = bool
@@ -202,7 +220,7 @@ variable "upwind_agentless_k8s_access_entries_enabled" {
 }
 
 variable "current_account_id" {
-  description = "(Optional). Explicit account ID for the AWS account being configured. Provide this when using upwind_agentless_k8s_account_whitelist so Terraform can determine resource creation during plan."
+  description = "(Optional). Explicit account ID. Provide this when using upwind_agentless_k8s_account_whitelist so Terraform can determine resource creation during plan."  
   type        = string
   default     = null
 
@@ -211,6 +229,23 @@ variable "current_account_id" {
     error_message = "current_account_id must be a 12-digit AWS account ID."
   }
 }
+
+variable "account_service_agentless_k8s_access_entries_policy_name" {
+  description = "The name to be used for the agentless Kubernetes access entries policy in the account service role."
+  type        = string
+  default     = "UpwindAccountServiceAgentlessK8sAEPolicy"
+
+  validation {
+    condition     = can(regex("^[\\w+=,.@-]+$", var.account_service_agentless_k8s_access_entries_policy_name))
+    error_message = "The agentless Kubernetes access entries policy name contains invalid characters."
+  }
+
+  validation {
+    condition     = length(var.account_service_agentless_k8s_access_entries_policy_name) <= 128
+    error_message = "The agentless Kubernetes access entries policy name is too long."
+  }
+
+}  
 
 variable "upwind_agentless_k8s_account_whitelist" {
   description = "(Optional). If set, this will limit the accounts in which the agentless Kubernetes access entry and SSM permissions are created."
