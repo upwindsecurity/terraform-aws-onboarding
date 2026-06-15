@@ -55,7 +55,7 @@ resource "aws_iam_role" "organization_service_role" {
       "upwind::OrchestratorAccountId"              = var.orchestrator_account_id
     } : {},
     var.cloudscanner_saas_customer_assume_role_name != null ? {
-      "upwind:aws:CustomerAssumeRoleName" = var.cloudscanner_saas_customer_assume_role_name      
+      "upwind:aws:CustomerAssumeRoleName" = var.cloudscanner_saas_customer_assume_role_name
     } : {}
   )
 }
