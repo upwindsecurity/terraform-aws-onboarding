@@ -261,7 +261,7 @@ resource "null_resource" "validate_org_register_auth" {
     precondition {
       condition = (
         var.upwind_disable_org_discovery_role_registration ||
-        !local.condition_is_management_account ||        
+        !local.condition_is_management_account ||
         local.condition_org_register_use_arn ||
         !local.condition_org_register_secret_value_provided ||
         local.condition_org_register_client_id_provided
@@ -272,7 +272,7 @@ resource "null_resource" "validate_org_register_auth" {
     precondition {
       condition = (
         var.upwind_disable_org_discovery_role_registration ||
-        !local.condition_is_management_account ||        
+        !local.condition_is_management_account ||
         local.condition_org_register_use_arn ||
         !local.condition_org_register_client_id_provided ||
         local.condition_org_register_secret_value_provided
@@ -288,7 +288,7 @@ resource "null_resource" "validate_org_register_auth" {
     precondition {
       condition = (
         var.upwind_disable_org_discovery_role_registration ||
-        !local.condition_is_management_account ||        
+        !local.condition_is_management_account ||
         local.condition_org_register_use_arn ||
         !local.condition_org_register_partial_inline
       )
