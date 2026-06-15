@@ -259,24 +259,6 @@ variable "account_service_agentless_k8s_access_entries_policy_name" {
 
 }  
 
-variable "upwind_agentless_k8s_ssm_enabled" {
-  description = "Enable the creation of the policy for agentless Kubernetes resource fetching from private EKS clusters via SSM tunnels."
-  type        = bool
-  default     = false
-}
-
-variable "upwind_agentless_k8s_eks_admin_view_policy_enabled" {
-  description = "Allow the role to associate AmazonEKSAdminViewPolicy (in addition to AmazonEKSViewPolicy) on Upwind-created access entries. Only takes effect when upwind_agentless_k8s_access_entries_enabled is true."
-  type        = bool
-  default     = true
-}
-
-variable "upwind_agentless_k8s_account_whitelist" {
-  description = "(Optional). If set, this will limit the accounts in which the agentless Kubernetes access entry and SSM permissions are created."
-  type        = list(string)
-  default     = []
-}
-
 variable "custom_tags" {
   description = "Custom tags which shall be applied to each resource created by the module."
   type        = map(string)
