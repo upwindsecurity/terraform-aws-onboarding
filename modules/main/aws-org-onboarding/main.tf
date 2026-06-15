@@ -51,7 +51,8 @@ module "account_service_role" {
 
   # The management account could be chosen as the orchestrator account (not recommended), so the role should be
   # created with the additional permissions
-  apply_for_orchestrator_account = local.condition_is_orchestrator_account
+  # In SaaS mode the admin role and management policies are not created, so apply_for_orchestrator_account is false.
+  apply_for_orchestrator_account = local.condition_is_orchestrator_account && !local.condition_is_saas_mode
 
   # Provide conditional features
   upwind_feature_dspm_enabled                        = var.upwind_feature_dspm_enabled
