@@ -82,11 +82,12 @@ resource "aws_iam_role_policy" "cloudscanner_execution_role_cloudscanner_access_
         },
         {
           Sid = "PermitEBSToEncyptWithUpwindCMK"
-          # Permit re-encryption using CloudScanner CMK in central account
+          # Permit decryption / re-encryption using CloudScanner CMK in central account
           Effect = "Allow"
           Action = [
             "kms:DescribeKey",
             "kms:Encrypt",
+            "kms:Decrypt",
             "kms:CreateGrant",
             "kms:ReEncryptTo",
             "kms:GenerateDataKey*"
@@ -215,7 +216,7 @@ resource "aws_iam_role_policy" "cloudscanner_execution_role_cloudscanner_access_
           Resource = "arn:${data.aws_partition.current.partition}:ec2:*::snapshot/*"
           Condition = {
             StringEquals = {
-              "aws:Resource/UpwindComponent" = "CloudScanner"
+              "aws:ResourceTag/UpwindComponent" = "CloudScanner"
             }
           }
         },
@@ -249,7 +250,23 @@ resource "aws_iam_role_policy" "cloudscanner_execution_role_cloudscanner_access_
               "ec2:ResourceTag/UpwindComponent" = "CloudScanner"
             }
           }
-        }
+        },
+        {
+          # EBS Direct Permissions (for marketplace AMIs)
+          Effect = "Allow",
+          Action = [
+            "ebs:ListSnapshotBlocks",
+            "ebs:GetSnapshotBlock"
+          ],
+          Resource = [
+            "arn:aws:ec2:*:*:snapshot/*"
+          ],
+          Condition = {
+            "StringEquals" = {
+              "aws:ResourceTag/UpwindComponent" = "CloudScanner"
+            }
+          }
+        },
       ]
     }
   )

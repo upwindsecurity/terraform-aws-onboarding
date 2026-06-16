@@ -1,3 +1,5 @@
+data "aws_partition" "current" {}
+
 resource "aws_iam_role" "organization_service_role" {
 
   name        = var.org_discovery_role_name
@@ -60,7 +62,7 @@ resource "aws_iam_role" "organization_service_role" {
 
 resource "aws_iam_role_policy_attachment" "organization_service_role_orgreadonly_policy_attachment" {
   role       = aws_iam_role.organization_service_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AWSOrganizationsReadOnlyAccess"
+  policy_arn = "arn:${data.aws_partition.current.partition}:iam::aws:policy/AWSOrganizationsReadOnlyAccess"
 }
 
 resource "aws_iam_role_policy" "organization_service_role_viewroletags_access_policy" {
