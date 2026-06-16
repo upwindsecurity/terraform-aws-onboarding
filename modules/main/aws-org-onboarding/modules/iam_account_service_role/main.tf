@@ -42,8 +42,14 @@ resource "aws_iam_role" "account_service_role" {
 
   # The Upwind backend uses tags on the roles for system discovery. These tags must not be altered.
   tags = merge(
-    local.common_tags,
-    # If the role is being created with elevated permissions, we will add the additional tags needed for
+    var.custom_tags,
+    {
+      "upwind:aws:Component"            = "Onboarding",
+      "upwind:aws:ReleaseVersion"       = local.upwind_version,
+      "upwind:aws:CloudScannerSaaSMode" = var.is_saas_mode ? "Enabled" : "Disabled"
+    },
+    # If the role is being created with elevated permissions (non-SaaS orchestrator account),
+    # add tags for CloudScanner Discovery.    # If the role is being created with elevated permissions, we will add the additional tags needed for
     # CloudScanner Discovery
     var.apply_for_orchestrator_account ? {
       "upwind:aws:CloudScannerAdministrationRoleName" = var.cloudscanner_admin_role_name
@@ -54,7 +60,10 @@ resource "aws_iam_role" "account_service_role" {
       "upwind:aws:HasCSAutomationPermissions"         = var.upwind_cloudscanner_management_enabled ? "Yes" : "No"
       "upwind:aws:HasCSEC2NetworkPermissions"         = var.upwind_include_ec2_network_management_permissions ? "Yes" : "No"
     } : {},
-
+    # In SaaS mode, tag the account service role with the customer assume role name for discovery.
+    var.cloudscanner_saas_customer_assume_role_name != null ? {
+      "upwind:aws:CustomerAssumeRoleName" = var.cloudscanner_saas_customer_assume_role_name
+    } : {},
     # Tags to signal whether agentless-k8s permissions were granted on this role.
     # Not gated on apply_for_orchestrator_account, added on role in all accounts.
     {
@@ -525,7 +534,13 @@ resource "aws_iam_policy" "account_service_cloudformation_access_policy" {
       ]
     }
   )
-  tags = local.common_tags
+  tags = merge(
+    var.custom_tags,
+    {
+      "upwind:aws:Component"      = "Onboarding",
+      "upwind:aws:ReleaseVersion" = local.upwind_version
+    }
+  )
 }
 
 resource "aws_iam_role_policy_attachment" "attach_cloudformation_access_policy" {
@@ -740,7 +755,12 @@ resource "aws_iam_policy" "account_service_cloudscanner_ec2_access_policy" {
     }
   )
 
-  tags = local.common_tags
+  tags = merge(
+    var.custom_tags,
+    {
+      "upwind:aws:Component"      = "Onboarding",
+      "upwind:aws:ReleaseVersion" = local.upwind_version
+  })
 }
 
 resource "aws_iam_role_policy_attachment" "attach_cloudscanner_ec2_access_policy" {
@@ -985,7 +1005,13 @@ resource "aws_iam_policy" "account_service_cloudscanner_ec2_network_permissions_
     }
   )
 
-  tags = local.common_tags
+  tags = merge(
+    var.custom_tags,
+    {
+      "upwind:aws:Component"      = "Onboarding",
+      "upwind:aws:ReleaseVersion" = local.upwind_version
+    }
+  )
 }
 
 resource "aws_iam_role_policy_attachment" "attach_cloudscanner_ec2_network_permissions_access_policy" {
@@ -1299,7 +1325,13 @@ resource "aws_iam_policy" "account_service_cloudscanner_access_policy" {
     }
   )
 
-  tags = local.common_tags
+  tags = merge(
+    var.custom_tags,
+    {
+      "upwind:aws:Component"      = "Onboarding",
+      "upwind:aws:ReleaseVersion" = local.upwind_version
+    }
+  )
 }
 
 resource "aws_iam_role_policy_attachment" "attach_cloudscanner_access_policy" {
@@ -1412,7 +1444,13 @@ resource "aws_iam_policy" "account_service_agentless_k8s_access_entries_access_p
     }
   )
 
-  tags = local.common_tags
+  tags = merge(
+    var.custom_tags,
+    {
+      "upwind:aws:Component"      = "Onboarding",
+      "upwind:aws:ReleaseVersion" = local.upwind_version
+    }
+  )
 }
 
 resource "aws_iam_role_policy_attachment" "attach_agentless_k8s_access_entries_access_policy" {
@@ -1501,7 +1539,13 @@ resource "aws_iam_policy" "account_service_agentless_k8s_ssm_access_policy" {
     }
   )
 
-  tags = local.common_tags
+  tags = merge(
+    var.custom_tags,
+    {
+      "upwind:aws:Component"      = "Onboarding",
+      "upwind:aws:ReleaseVersion" = local.upwind_version
+    }
+  )
 }
 
 resource "aws_iam_role_policy_attachment" "attach_agentless_k8s_ssm_access_policy" {

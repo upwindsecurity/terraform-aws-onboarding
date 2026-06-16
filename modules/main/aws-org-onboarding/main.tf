@@ -251,7 +251,7 @@ resource "null_resource" "validate_saas_config" {
 resource "null_resource" "validate_org_register_auth" {
   lifecycle {
 
-    # Must provide something
+    # Must provide something (only when registration is enabled and this is the management account)
     precondition {
       condition     = var.upwind_disable_org_discovery_role_registration || !local.condition_is_management_account || local.condition_org_register_has_any_auth
       error_message = "Org registration auth is required. Provide either a secret ARN or client_id and client_secret."
