@@ -342,6 +342,74 @@ resource "aws_iam_role_policy" "cloudscanner_administration_role_cloudscannersca
           # Grant permissions to only create logs with the following paths
           Resource = "arn:${data.aws_partition.current.partition}:logs:*:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/upwind-cs-lambda-ucsc-*"
         },
+                # The statements AllowAutoscalingActionsOnCloudScannerTaggedASGs,  AllowRunInstancesWithCloudScannerTagOnlyforASGs and
+        # AllowTaggingOnlyIfCloudScannerTagIsPresentAndOnlyforASGs combine together so that the Iam permissions allow the auto scaling group to be mutated securely.
+        # * AllowTaggingOnlyIfCloudScannerTagIsPresentAndOnlyforASGs permits CloudScanner tagged ASGs to be updated.
+        # * AllowRunInstancesWithCloudScannerTagOnlyforASGs allows runInstances to be invoked so long as the CloudScanner tag is present in the request,
+        #   and the request is being made by the AWS autoscaling service.
+        # * AllowTaggingOnlyIfCloudScannerTagIsPresentAndOnlyforASGs grants permissions to add tags to the necessary resources only if the CloudScanner tag is present
+        #   in the request, and that the request is being made by the AWS autoscaling service. This is required as when the ASG performs a scale out, it needs to tag
+        #   the new instances with the same tags as the ASG, including the CloudScanner tag, and without this permission, the tagging would fail, which in turn causes
+        #   the runInstances call to fail as the tags are not applied.
+        # Tags can only be added to the resources when creating new instances and creating new instances is only possible when the request is from the AWS autoscaling
+        # service. It should only be possible to create new EC2 instances through the Autoscaling service
+        {
+          Sid    = "AllowRunInstancesWithCloudScannerTagOnlyforASGs"
+          Effect = "Allow"
+
+          Action = [
+            "ec2:RunInstances"
+          ]
+
+          Resource = [
+            "arn:${data.aws_partition.current.partition}:ec2:*:*:instance/*",
+            "arn:${data.aws_partition.current.partition}:ec2:*:*:volume/*",
+            "arn:${data.aws_partition.current.partition}:ec2:*:*:network-interface/*"
+          ]
+
+          Condition = {
+            StringEquals = {
+              "aws:RequestTag/UpwindComponent" = "CloudScanner"
+            }
+
+            "ForAnyValue:StringEquals" = {
+              "aws:CalledVia" = [
+                "autoscaling.amazonaws.com"
+              ]
+            }
+
+            Null = {
+              "aws:RequestTag/aws:autoscaling:groupName" = "false"
+            }
+          }
+        },
+        {
+          Sid    = "AllowTaggingOnlyIfCloudScannerTagIsPresentAndOnlyforASGs"
+          Effect = "Allow"
+
+          Action = [
+            "ec2:CreateTags"
+          ]
+
+          Resource = [
+            "arn:${data.aws_partition.current.partition}:ec2:*:*:instance/*",
+            "arn:${data.aws_partition.current.partition}:ec2:*:*:volume/*",
+            "arn:${data.aws_partition.current.partition}:ec2:*:*:network-interface/*"
+          ]
+
+          Condition = {
+            StringEquals = {
+              "ec2:CreateAction"               = "RunInstances"
+              "aws:RequestTag/UpwindComponent" = "CloudScanner"
+            }
+
+            "ForAnyValue:StringEquals" = {
+              "aws:CalledVia" = [
+                "autoscaling.amazonaws.com"
+              ]
+            }
+          }
+        },
         {
           # Restrict access to only the CloudScanner Secrets created within the Admin account
           Effect = "Allow"
@@ -382,6 +450,7 @@ resource "aws_iam_role_policy" "cloudscanner_administration_role_cloudscannersca
         },
         {
           # Permission to allow autoscaling actions to be perform on the CloudScanner tagged scaling groups.
+          Sid    = "AllowAutoscalingActionsOnCloudScannerTaggedASGs"
           Effect = "Allow"
           Action = [
             "autoscaling:*",
@@ -396,6 +465,7 @@ resource "aws_iam_role_policy" "cloudscanner_administration_role_cloudscannersca
           }
         },
         {
+          Sid = "AllowEC2ActionsOnCloudScannerTaggedLaunchTemplates"
           # Permissions which will allow the CloudScanner Lambda apply changes to the CloudScanner ASG launch templates
           Action = [
             "ec2:CreateLaunchTemplateVersion",
