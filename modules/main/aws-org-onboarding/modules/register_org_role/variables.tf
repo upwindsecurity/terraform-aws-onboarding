@@ -11,7 +11,7 @@ variable "upwind_organization_id" {
 
 variable "upwind_region" {
   type        = string
-  description = "Which Upwind region to communicate with. 'us', 'eu' or 'me', or custom region."
+  description = "Which Upwind region to communicate with. 'us', 'eu', 'ap' or 'me', or custom region."
   default     = "us"
 }
 
