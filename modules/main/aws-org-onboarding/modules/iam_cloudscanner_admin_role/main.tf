@@ -342,7 +342,7 @@ resource "aws_iam_role_policy" "cloudscanner_administration_role_cloudscannersca
           # Grant permissions to only create logs with the following paths
           Resource = "arn:${data.aws_partition.current.partition}:logs:*:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/upwind-cs-lambda-ucsc-*"
         },
-                # The statements AllowAutoscalingActionsOnCloudScannerTaggedASGs,  AllowRunInstancesWithCloudScannerTagOnlyforASGs and
+        # The statements AllowAutoscalingActionsOnCloudScannerTaggedASGs,  AllowRunInstancesWithCloudScannerTagOnlyforASGs and
         # AllowTaggingOnlyIfCloudScannerTagIsPresentAndOnlyforASGs combine together so that the Iam permissions allow the auto scaling group to be mutated securely.
         # * AllowTaggingOnlyIfCloudScannerTagIsPresentAndOnlyforASGs permits CloudScanner tagged ASGs to be updated.
         # * AllowRunInstancesWithCloudScannerTagOnlyforASGs allows runInstances to be invoked so long as the CloudScanner tag is present in the request,

@@ -125,22 +125,6 @@ intend to provide the network stack configuration.
   # Full policy name validation is delegated to the sub modules.
 }
 
-variable "account_service_agentless_k8s_access_entries_policy_name" {
-  description = "The name to be used for the agentless Kubernetes access entries policy in the account service role."
-  type        = string
-  default     = null
-
-  validation {
-    condition     = can(regex("^[\\w+=,.@-]+$", var.account_service_agentless_k8s_access_entries_policy_name))
-    error_message = "The agentless Kubernetes access entries policy name contains invalid characters."
-  }
-
-  validation {
-    condition     = length(var.account_service_agentless_k8s_access_entries_policy_name) <= 128
-    error_message = "The agentless Kubernetes access entries policy name is too long."
-  }
-}
-
 variable "account_service_agentless_k8s_ssm_policy_name" {
   description = "The name to be used for the agentless Kubernetes SSM policy in the account service role."
   type        = string
@@ -220,7 +204,7 @@ variable "upwind_agentless_k8s_access_entries_enabled" {
 }
 
 variable "current_account_id" {
-  description = "(Optional). Explicit account ID. Provide this when using upwind_agentless_k8s_account_whitelist so Terraform can determine resource creation during plan."  
+  description = "(Optional). Explicit account ID. Provide this when using upwind_agentless_k8s_account_whitelist so Terraform can determine resource creation during plan."
   type        = string
   default     = null
 
@@ -257,7 +241,7 @@ variable "account_service_agentless_k8s_access_entries_policy_name" {
     error_message = "The agentless Kubernetes access entries policy name is too long."
   }
 
-}  
+}
 
 variable "custom_tags" {
   description = "Custom tags which shall be applied to each resource created by the module."

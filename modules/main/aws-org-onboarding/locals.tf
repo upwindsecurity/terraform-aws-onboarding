@@ -9,12 +9,12 @@ locals {
   # The following conditional expressions are used when determining which resources can be included in each account.
 
   # Resolved resource names
-  suffix                                 = var.role_name_suffix != null ? "-${var.role_name_suffix}" : ""
-  organization_account_service_role_name = "${var.organization_role_name}${local.suffix}"
-  account_service_role_name              = "${var.account_service_role_name}${local.suffix}"
-  cloudscanner_admin_role_name           = "${var.cloudscanner_administration_role_name}${local.suffix}"
-  cloudscanner_execution_role_name       = "${var.cloudscanner_execution_role_name}${local.suffix}"
-  cloudscanner_secret_name               = "${var.credentials_secret_name_prefix}${var.cloudscanner_secret_name}${local.suffix}"
+  suffix                                      = var.role_name_suffix != null ? "-${var.role_name_suffix}" : ""
+  organization_account_service_role_name      = "${var.organization_role_name}${local.suffix}"
+  account_service_role_name                   = "${var.account_service_role_name}${local.suffix}"
+  cloudscanner_admin_role_name                = "${var.cloudscanner_administration_role_name}${local.suffix}"
+  cloudscanner_execution_role_name            = "${var.cloudscanner_execution_role_name}${local.suffix}"
+  cloudscanner_secret_name                    = "${var.credentials_secret_name_prefix}${var.cloudscanner_secret_name}${local.suffix}"
   cloudscanner_saas_customer_assume_role_name = "${var.cloudscanner_saas_customer_assume_role_name}${local.suffix}"
 
   # Create managed policy names
