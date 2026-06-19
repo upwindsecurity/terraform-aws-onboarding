@@ -39,15 +39,12 @@ module "account_service_role" {
   cloudscanner_admin_role_name     = local.cloudscanner_admin_role_name
   cloudscanner_execution_role_name = local.cloudscanner_execution_role_name
   custom_tags                      = var.custom_tags
-  current_account_id               = var.current_account_id
 
   # Pass the names for the managed policies
   account_service_cloudformation_policy_name               = local.account_service_role_cloudformation_policy_name
   account_service_cloudscanner_ec2_policy_name             = local.account_service_role_cloudscanner_ec2_policy_name
   account_service_cloudscanner_policy_name                 = local.account_service_role_cloudscanner_policy_name
   account_service_cloudscanner_ec2_network_policy_name     = local.account_service_cloudscanner_ec2_network_policy_name
-  account_service_agentless_k8s_access_entries_policy_name = local.account_service_agentless_k8s_access_entries_policy_name
-  account_service_agentless_k8s_ssm_policy_name            = local.account_service_agentless_k8s_ssm_policy_name
 
   # Set the secret - either to the created secret or the ARN provided
   cloudscanner_secret_arn = local.condition_create_cloudscanner_secret ? one(module.cloudscanner_secret[*]).secret.arn : var.upwind_cloudscanner_auth_secret_arn

@@ -125,22 +125,6 @@ intend to provide the network stack configuration.
   # Full policy name validation is delegated to the sub modules.
 }
 
-variable "account_service_agentless_k8s_access_entries_policy_name" {
-  description = "The name to be used for the agentless Kubernetes access entries policy in the account service role."
-  type        = string
-  default     = null
-
-  validation {
-    condition     = can(regex("^[\\w+=,.@-]+$", var.account_service_agentless_k8s_access_entries_policy_name))
-    error_message = "The agentless Kubernetes access entries policy name contains invalid characters."
-  }
-
-  validation {
-    condition     = length(var.account_service_agentless_k8s_access_entries_policy_name) <= 128
-    error_message = "The agentless Kubernetes access entries policy name is too long."
-  }
-}
-
 variable "account_service_agentless_k8s_ssm_policy_name" {
   description = "The name to be used for the agentless Kubernetes SSM policy in the account service role."
   type        = string
