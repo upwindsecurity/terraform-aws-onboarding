@@ -204,7 +204,7 @@ variable "upwind_agentless_k8s_access_entries_enabled" {
 }
 
 variable "current_account_id" {
-  description = "(Optional). Explicit account ID. Provide this when using upwind_agentless_k8s_account_whitelist so Terraform can determine resource creation during plan."  
+  description = "(Optional). Explicit account ID. Provide this when using upwind_agentless_k8s_account_whitelist so Terraform can determine resource creation during plan."
   type        = string
   default     = null
 
@@ -241,7 +241,7 @@ variable "account_service_agentless_k8s_access_entries_policy_name" {
     error_message = "The agentless Kubernetes access entries policy name is too long."
   }
 
-}  
+}
 
 variable "custom_tags" {
   description = "Custom tags which shall be applied to each resource created by the module."
