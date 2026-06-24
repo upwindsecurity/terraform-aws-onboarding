@@ -6,6 +6,48 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [2.1.11](https://github.com/upwindsecurity/terraform-aws-onboarding/compare/v2.1.10...v2.1.11) (2026-06-22)
+
+### Bug Fixes
+
+* **UP-2416:** ap region ([#37](https://github.com/upwindsecurity/terraform-aws-onboarding/issues/37)) ([afe631d](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/afe631d71b7773222819dd3a92c767e3ccc1ea20))
+
+## [2.1.10](https://github.com/upwindsecurity/terraform-aws-onboarding/compare/v2.1.9...v2.1.10) (2026-06-19)
+
+### Bug Fixes
+
+* **AG-5732:** module consolidation ([#36](https://github.com/upwindsecurity/terraform-aws-onboarding/issues/36)) ([7a24799](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/7a247999962844efed96012046c3f5d5dff913c5))
+
+## [2.1.9](https://github.com/upwindsecurity/terraform-aws-onboarding/compare/v2.1.8...v2.1.9) (2026-06-18)
+
+### Bug Fixes
+
+* **UP-463:** fixing asg permission tag issues ([#35](https://github.com/upwindsecurity/terraform-aws-onboarding/issues/35)) ([8f826a7](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/8f826a77b7db9158091f251761157960e5bbf81a))
+
+## [2.1.8](https://github.com/upwindsecurity/terraform-aws-onboarding/compare/v2.1.7...v2.1.8) (2026-06-16)
+
+### Bug Fixes
+
+* **AG-5732:** module consolidation ([#34](https://github.com/upwindsecurity/terraform-aws-onboarding/issues/34)) ([70ebcc8](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/70ebcc852633ea62e5da4c6f642072499c197238))
+
+## [2.1.7](https://github.com/upwindsecurity/terraform-aws-onboarding/compare/v2.1.6...v2.1.7) (2026-06-09)
+
+### Bug Fixes
+
+* **AG-0:** removing unnecessary pr step ([#32](https://github.com/upwindsecurity/terraform-aws-onboarding/issues/32)) ([b3ec09e](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/b3ec09ec278eb44ad2e00e32bd6eb338dada94a8))
+
+## [2.1.6](https://github.com/upwindsecurity/terraform-aws-onboarding/compare/v2.1.5...v2.1.6) (2026-06-09)
+
+### Bug Fixes
+
+* **AG-0:** adding versioning ([#31](https://github.com/upwindsecurity/terraform-aws-onboarding/issues/31)) ([fec41c7](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/fec41c7d4cafe26d9100642923b11b5fdc05ec40))
+
+## [2.1.5](https://github.com/upwindsecurity/terraform-aws-onboarding/compare/v2.1.4...v2.1.5) (2026-06-09)
+
+### Bug Fixes
+
+* **AG-0:** rollback to v2.1.0 ([#29](https://github.com/upwindsecurity/terraform-aws-onboarding/issues/29)) ([4837c3e](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/4837c3e5a77b9e6cca0cdb64e2b31d1dcc62f523)), closes [#26](https://github.com/upwindsecurity/terraform-aws-onboarding/issues/26) [#24](https://github.com/upwindsecurity/terraform-aws-onboarding/issues/24) [#22](https://github.com/upwindsecurity/terraform-aws-onboarding/issues/22) [#20](https://github.com/upwindsecurity/terraform-aws-onboarding/issues/20)
+
 ## 1.0.0 (2026-04-13)
 
 ### Bug Fixes

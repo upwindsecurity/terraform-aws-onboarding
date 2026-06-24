@@ -54,7 +54,7 @@ resource "aws_iam_role_policy" "cloudscanner_administration_role_cloudscannerope
           ]
           # Grant permissions to only create logs with the following paths
           Resource = [
-            "arn:aws:logs:*:${data.aws_caller_identity.current.account_id}:log-group:/aws/ec2/system-logs/upwind-cs-ucsc-*"
+            "arn:${data.aws_partition.current.partition}:logs:*:${data.aws_caller_identity.current.account_id}:log-group:/aws/ec2/system-logs/upwind-cs-ucsc-*"
           ]
         },
         {
@@ -244,7 +244,7 @@ resource "aws_iam_role_policy" "cloudscanner_administration_role_cloudscannerope
             "ebs:ListSnapshotBlocks",
             "ebs:GetSnapshotBlock"
           ]
-          Resource = "arn:aws:ec2:*:*:snapshot/*"
+          Resource = "arn:${data.aws_partition.current.partition}:ec2:*:*:snapshot/*"
           Condition = {
             StringEquals = {
               "ec2:ResourceTag/UpwindComponent" = "CloudScanner"
@@ -304,7 +304,7 @@ resource "aws_iam_role_policy" "cloudscanner_administration_role_cloudscannerope
           ]
           Resource = [
             # S3 objects are limited to buckets and cannot include accounts ids.
-            "arn:aws:s3:::upwind-serverless-functions-*/integrations/cloudscanner/*"
+            "arn:${data.aws_partition.current.partition}:s3:::upwind-serverless-functions-*/integrations/cloudscanner/*"
           ],
           Condition = {
             # Restricting S3 Access to the Upwind publishing account
@@ -340,7 +340,75 @@ resource "aws_iam_role_policy" "cloudscanner_administration_role_cloudscannersca
             "logs:PutLogEvents"
           ]
           # Grant permissions to only create logs with the following paths
-          Resource = "arn:aws:logs:*:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/upwind-cs-lambda-ucsc-*"
+          Resource = "arn:${data.aws_partition.current.partition}:logs:*:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/upwind-cs-lambda-ucsc-*"
+        },
+        # The statements AllowAutoscalingActionsOnCloudScannerTaggedASGs,  AllowRunInstancesWithCloudScannerTagOnlyforASGs and
+        # AllowTaggingOnlyIfCloudScannerTagIsPresentAndOnlyforASGs combine together so that the Iam permissions allow the auto scaling group to be mutated securely.
+        # * AllowTaggingOnlyIfCloudScannerTagIsPresentAndOnlyforASGs permits CloudScanner tagged ASGs to be updated.
+        # * AllowRunInstancesWithCloudScannerTagOnlyforASGs allows runInstances to be invoked so long as the CloudScanner tag is present in the request,
+        #   and the request is being made by the AWS autoscaling service.
+        # * AllowTaggingOnlyIfCloudScannerTagIsPresentAndOnlyforASGs grants permissions to add tags to the necessary resources only if the CloudScanner tag is present
+        #   in the request, and that the request is being made by the AWS autoscaling service. This is required as when the ASG performs a scale out, it needs to tag
+        #   the new instances with the same tags as the ASG, including the CloudScanner tag, and without this permission, the tagging would fail, which in turn causes
+        #   the runInstances call to fail as the tags are not applied.
+        # Tags can only be added to the resources when creating new instances and creating new instances is only possible when the request is from the AWS autoscaling
+        # service. It should only be possible to create new EC2 instances through the Autoscaling service
+        {
+          Sid    = "AllowRunInstancesWithCloudScannerTagOnlyforASGs"
+          Effect = "Allow"
+
+          Action = [
+            "ec2:RunInstances"
+          ]
+
+          Resource = [
+            "arn:${data.aws_partition.current.partition}:ec2:*:*:instance/*",
+            "arn:${data.aws_partition.current.partition}:ec2:*:*:volume/*",
+            "arn:${data.aws_partition.current.partition}:ec2:*:*:network-interface/*"
+          ]
+
+          Condition = {
+            StringEquals = {
+              "aws:RequestTag/UpwindComponent" = "CloudScanner"
+            }
+
+            "ForAnyValue:StringEquals" = {
+              "aws:CalledVia" = [
+                "autoscaling.amazonaws.com"
+              ]
+            }
+
+            Null = {
+              "aws:RequestTag/aws:autoscaling:groupName" = "false"
+            }
+          }
+        },
+        {
+          Sid    = "AllowTaggingOnlyIfCloudScannerTagIsPresentAndOnlyforASGs"
+          Effect = "Allow"
+
+          Action = [
+            "ec2:CreateTags"
+          ]
+
+          Resource = [
+            "arn:${data.aws_partition.current.partition}:ec2:*:*:instance/*",
+            "arn:${data.aws_partition.current.partition}:ec2:*:*:volume/*",
+            "arn:${data.aws_partition.current.partition}:ec2:*:*:network-interface/*"
+          ]
+
+          Condition = {
+            StringEquals = {
+              "ec2:CreateAction"               = "RunInstances"
+              "aws:RequestTag/UpwindComponent" = "CloudScanner"
+            }
+
+            "ForAnyValue:StringEquals" = {
+              "aws:CalledVia" = [
+                "autoscaling.amazonaws.com"
+              ]
+            }
+          }
         },
         {
           # Restrict access to only the CloudScanner Secrets created within the Admin account
@@ -382,6 +450,7 @@ resource "aws_iam_role_policy" "cloudscanner_administration_role_cloudscannersca
         },
         {
           # Permission to allow autoscaling actions to be perform on the CloudScanner tagged scaling groups.
+          Sid    = "AllowAutoscalingActionsOnCloudScannerTaggedASGs"
           Effect = "Allow"
           Action = [
             "autoscaling:*",
@@ -396,6 +465,7 @@ resource "aws_iam_role_policy" "cloudscanner_administration_role_cloudscannersca
           }
         },
         {
+          Sid = "AllowEC2ActionsOnCloudScannerTaggedLaunchTemplates"
           # Permissions which will allow the CloudScanner Lambda apply changes to the CloudScanner ASG launch templates
           Action = [
             "ec2:CreateLaunchTemplateVersion",
@@ -405,7 +475,7 @@ resource "aws_iam_role_policy" "cloudscanner_administration_role_cloudscannersca
           ],
           Effect = "Allow",
           Resource = [
-            "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:launch-template/*"
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:launch-template/*"
           ],
           Condition = {
             StringEquals : {
@@ -427,19 +497,19 @@ resource "aws_iam_role_policy" "cloudscanner_administration_role_cloudscannersca
           Effect = "Allow",
           Action = "ec2:RunInstances",
           Resource = [
-            "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:instance/*",
-            "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:network-interface/*",
-            "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:security-group/*",
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:instance/*",
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:network-interface/*",
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:security-group/*",
             # Permit subnets from any account to be attached to the launch template. This is to facilitate subnets created
             # and shared from other accounts using AWS Resource Access Management.
-            "arn:aws:ec2:*:*:subnet/*",
-            "arn:aws:ec2:*::image/ami-*",
-            "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:volume/*",
-            "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:key-pair/*"
+            "arn:${data.aws_partition.current.partition}:ec2:*:*:subnet/*",
+            "arn:${data.aws_partition.current.partition}:ec2:*::image/ami-*",
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:volume/*",
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:key-pair/*"
           ],
           Condition = {
             ArnLike : {
-              "ec2:LaunchTemplate" : "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:launch-template/*"
+              "ec2:LaunchTemplate" : "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:launch-template/*"
             }
           }
         },
@@ -468,7 +538,7 @@ resource "aws_iam_role_policy" "cloudscanner_administration_role_cloudscannersna
       Statement = [
         {
           Sid = "PermitEBSDecryptFromAnyCMK"
-          # Permissions required to permit AWS EBS to decrypt/re-encrypt resources encrypted with a customer provided CMK          
+          # Permissions required to permit AWS EBS to decrypt/re-encrypt resources encrypted with a customer provided CMK
           Effect = "Allow"
           Action = [
             "kms:ReEncrypt*",
@@ -483,7 +553,7 @@ resource "aws_iam_role_policy" "cloudscanner_administration_role_cloudscannersna
         },
         {
           Sid = "PermitEBSToGrantForAnyCMK"
-          # Permissions require to permit only AWS EBS, or any AWS service, to create grants to use a customer CMK          
+          # Permissions require to permit only AWS EBS, or any AWS service, to create grants to use a customer CMK
           Effect = "Allow"
           Action = [
             "kms:CreateGrant"
@@ -497,11 +567,12 @@ resource "aws_iam_role_policy" "cloudscanner_administration_role_cloudscannersna
         },
         {
           Sid = "PermitEBSToEncryptWithUpwindCMK"
-          # Permit re-encryption using CloudScanner CMK in central account          
+          # Permit decryption / re-encryption using CloudScanner CMK in central account
           Effect = "Allow"
           Action = [
             "kms:DescribeKey",
             "kms:Encrypt",
+            "kms:Decrypt",
             "kms:CreateGrant",
             "kms:ReEncryptTo",
             "kms:GenerateDataKey*"
@@ -562,7 +633,7 @@ resource "aws_iam_role_policy" "cloudscanner_administration_role_cloudscannersna
           ]
           # Grant permissions to only create logs with the following paths
           Resource = [
-            "arn:aws:logs:*:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/upwind-cs-lambda-ucsc-*"
+            "arn:${data.aws_partition.current.partition}:logs:*:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/upwind-cs-lambda-ucsc-*"
           ]
         },
         {
@@ -595,7 +666,7 @@ resource "aws_iam_role_policy" "cloudscanner_administration_role_cloudscannerupd
           ]
           # Grant permissions to only create logs with the following paths
           Resource = [
-            "arn:aws:logs:*:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/upwind-cs-lambda-ucsc-*"
+            "arn:${data.aws_partition.current.partition}:logs:*:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/upwind-cs-lambda-ucsc-*"
           ]
         },
         {
@@ -621,8 +692,8 @@ resource "aws_iam_role_policy" "cloudscanner_administration_role_cloudscannerupd
             "lambda:ListVersionsByFunction"
           ]
           Resource = [
-            "arn:aws:lambda:*:${data.aws_caller_identity.current.account_id}:function:upwind-cs-lambda-ucsc-*",
-            "arn:aws:lambda:*:${data.aws_caller_identity.current.account_id}:function:upwind-cs-ss-lambda-ucsc-*",
+            "arn:${data.aws_partition.current.partition}:lambda:*:${data.aws_caller_identity.current.account_id}:function:upwind-cs-lambda-ucsc-*",
+            "arn:${data.aws_partition.current.partition}:lambda:*:${data.aws_caller_identity.current.account_id}:function:upwind-cs-ss-lambda-ucsc-*",
           ]
         },
         {
@@ -632,7 +703,7 @@ resource "aws_iam_role_policy" "cloudscanner_administration_role_cloudscannerupd
           ]
           Resource = [
             # S3 objects are limited to buckets and cannot include accounts ids.
-            "arn:aws:s3:::upwind-serverless-functions-*/integrations/cloudscanner/*"
+            "arn:${data.aws_partition.current.partition}:s3:::upwind-serverless-functions-*/integrations/cloudscanner/*"
           ],
           Condition = {
             # Restricting S3 Access to the Upwind publishing account

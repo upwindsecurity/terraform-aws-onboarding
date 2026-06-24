@@ -33,10 +33,10 @@ variable "cloudscanner_secret_arn" {
   type        = string
 
   validation {
-    condition     = can(regex("^arn:aws:secretsmanager:[a-z]{2}-[a-z]+-\\d:[0-9]{12}:secret:[a-zA-Z0-9_./-]+-[a-zA-Z0-9]+$", var.cloudscanner_secret_arn))
+    # wildcard following '^arn:' accounts for use of AWS partitions
+    condition     = can(regex("^arn:.+:secretsmanager:[a-z]{2}-[a-z]+-\\d:[0-9]{12}:secret:[a-zA-Z0-9_./-]+-[a-zA-Z0-9]+$", var.cloudscanner_secret_arn))
     error_message = "The CloudScanner secret ARN must be a valid AWS Secrets Manager ARN."
   }
-
 }
 
 variable "custom_tags" {
