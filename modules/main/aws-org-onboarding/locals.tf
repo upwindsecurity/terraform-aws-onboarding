@@ -86,39 +86,39 @@ locals {
   # Org registration auth validation
   # ----------------------------------
 
-  condition_org_register_client_id_provided = (
-    var.upwind_org_register_auth_client_id != null &&
-    var.upwind_org_register_auth_client_id != ""
-  )
+  # condition_org_register_client_id_provided = (
+  #   var.upwind_org_register_auth_client_id != null &&
+  #   var.upwind_org_register_auth_client_id != ""
+  # )
 
-  condition_org_register_secret_value_provided = (
-    var.upwind_org_register_auth_secret_value != null &&
-    var.upwind_org_register_auth_secret_value != ""
-  )
+  # condition_org_register_secret_value_provided = (
+  #   var.upwind_org_register_auth_secret_value != null &&
+  #   var.upwind_org_register_auth_secret_value != ""
+  # )
 
-  condition_org_register_use_arn = (
-    var.upwind_org_register_auth_secret_arn != null &&
-    var.upwind_org_register_auth_secret_arn != ""
-  )
+  # condition_org_register_use_arn = (
+  #   var.upwind_org_register_auth_secret_arn != null &&
+  #   var.upwind_org_register_auth_secret_arn != ""
+  # )
 
-  condition_org_register_use_inline = (
-    local.condition_org_register_client_id_provided &&
-    local.condition_org_register_secret_value_provided
-  )
+  # condition_org_register_use_inline = (
+  #   local.condition_org_register_client_id_provided &&
+  #   local.condition_org_register_secret_value_provided
+  # )
 
-  condition_org_register_partial_inline = (
-    local.condition_org_register_client_id_provided !=
-    local.condition_org_register_secret_value_provided
-  )
+  # condition_org_register_partial_inline = (
+  #   local.condition_org_register_client_id_provided !=
+  #   local.condition_org_register_secret_value_provided
+  # )
 
-  condition_org_register_has_any_auth = (
-    local.condition_org_register_use_arn ||
-    local.condition_org_register_client_id_provided ||
-    local.condition_org_register_secret_value_provided
-  )
+  # condition_org_register_has_any_auth = (
+  #   local.condition_org_register_use_arn ||
+  #   local.condition_org_register_client_id_provided ||
+  #   local.condition_org_register_secret_value_provided
+  # )
 
-  condition_org_register_invalid_both_provided = (
-    local.condition_org_register_use_arn &&
-    local.condition_org_register_use_inline
-  )
+  # condition_org_register_invalid_both_provided = (
+  #   local.condition_org_register_use_arn &&
+  #   local.condition_org_register_use_inline
+  # )
 }

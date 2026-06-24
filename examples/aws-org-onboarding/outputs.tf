@@ -57,9 +57,3 @@ output "org_registration_response" {
   description = "Org registration (full) response."
   value       = one(module.upwind_org_account_onboarding[*])
 }
-
-output "org_registration_state" {
-  description = "Discovery role registration state."
-  value       = one(module.upwind_org_account_onboarding[*].org_registration_response_state)
-}
-
