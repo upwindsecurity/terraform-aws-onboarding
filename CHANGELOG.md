@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [2.1.12](https://github.com/upwindsecurity/terraform-aws-onboarding/compare/v2.1.11...v2.1.12) (2026-06-25)
+
+### Bug Fixes
+
+* **AG-2798:** Remove Discovery role registration ([8c873c7](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/8c873c7642a2e6e5d2cae00e486d45e3e682bd54))
+* **AG-2798:** Remove Org role registration configurations and related resources ([6dadb23](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/6dadb23acd644f49fc0da3ab980c66a01c9f4cbc))
+* **AG-2798:** Remove Org role registration module and related resources ([60c8dd9](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/60c8dd9960eaafb6d4ad016dbee0b2c3857756c0))
+* Remove organization role registration configurations and related resources ([801bdc1](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/801bdc160073841e8c473db469a01997c7abac0d))
+* Remove unnecessary blank line in variables.tf ([61dd199](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/61dd19929c2cc69bbf849907d1dc0979fc15f0e8))
+
+### Code Refactoring
+
+* Clean up org registration related code and documentation ([de867c3](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/de867c32ca0063a0a53aaad267ada80347c52432))
+
 ## [2.1.11](https://github.com/upwindsecurity/terraform-aws-onboarding/compare/v2.1.10...v2.1.11) (2026-06-22)
 
 ### Bug Fixes
