@@ -308,54 +308,6 @@ variable "upwind_agentless_k8s_eks_admin_view_policy_enabled" {
 }
 
 
-#######################################################################################
-# The following variables are used as part of the Org Discovery role registration
-#######################################################################################
-variable "upwind_disable_org_discovery_role_registration" {
-  description = "Disable the Org discovery role registration process."
-  type        = bool
-  default     = false
-}
-
-variable "upwind_organization_id" {
-  description = "The identifier of the Upwind organization to integrate with."
-  type        = string
-  default     = null
-}
-
-variable "upwind_region" {
-  type        = string
-  description = "Which Upwind region to communicate with. 'us', 'eu', 'ap' or 'me', or custom region."
-  default     = "us"
-}
-
-variable "upwind_org_register_auth_client_id" {
-  description = "The client ID used for authentication with the Upwind Authorization Service."
-  type        = string
-  default     = null
-}
-
-variable "upwind_org_register_auth_secret_value" {
-  description = "The client secret for authentication with the Upwind Authorization Service."
-  type        = string
-  default     = null
-}
-
-variable "upwind_org_register_auth_secret_arn" {
-  description = "The ARN of a secret containing the org registration secret."
-  type        = string
-  default     = null
-
-  validation {
-    condition = (
-      var.upwind_org_register_auth_secret_arn == null ||
-      can(regex("^arn:aws:secretsmanager:[a-z]{2}-[a-z]+-\\d:[0-9]{12}:secret:[a-zA-Z0-9_./-]+-[a-zA-Z0-9]+$", var.upwind_org_register_auth_secret_arn))
-    )
-    error_message = "The secret ARN must be a valid AWS Secrets Manager ARN."
-  }
-}
-
-
 variable "upwind_auth_endpoint" {
   description = "The Authentication API endpoint."
   type        = string

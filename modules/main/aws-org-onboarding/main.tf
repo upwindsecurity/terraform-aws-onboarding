@@ -137,32 +137,6 @@ module "cloudscanner_saas_customer_assume_role" {
   custom_tags                      = var.custom_tags
 }
 
-# Create the resources which will automatically register the Org role
-resource "time_sleep" "wait_for_org_discovery_role_creation" {
-  count = (local.condition_is_management_account && !var.upwind_disable_org_discovery_role_registration) ? 1 : 0
-  depends_on = [
-    module.org_discovery_role,
-  ]
-  create_duration = var.aws_iam_role_creation_wait_time
-}
-
-module "register_org_discovery_role" {
-  count = (local.condition_is_management_account && !var.upwind_disable_org_discovery_role_registration) ? 1 : 0
-
-  depends_on = [time_sleep.wait_for_org_discovery_role_creation]
-
-  source                 = "./modules/register_org_role"
-  upwind_organization_id = var.upwind_organization_id
-  role_arn               = one(module.org_discovery_role[*]).iam_role.arn
-
-  upwind_auth_client_id       = var.upwind_org_register_auth_client_id
-  upwind_auth_secret_value    = var.upwind_org_register_auth_secret_value
-  upwind_auth_secret_arn      = var.upwind_org_register_auth_secret_arn
-  upwind_auth_endpoint        = var.upwind_auth_endpoint
-  upwind_integration_endpoint = var.upwind_integration_endpoint
-  upwind_region               = var.upwind_region
-}
-
 # Using a null resource so that we can avail of the precondition rules to
 # perform extra validation when installing into the management account
 resource "null_resource" "validate_management_account" {
@@ -244,52 +218,3 @@ resource "null_resource" "validate_saas_config" {
   }
 }
 
-# Must provide something (only when registration is enabled and this is the management account)
-resource "null_resource" "validate_org_register_auth" {
-  lifecycle {
-
-    # Must provide something (only when registration is enabled and this is the management account)
-    precondition {
-      condition     = var.upwind_disable_org_discovery_role_registration || !local.condition_is_management_account || local.condition_org_register_has_any_auth
-      error_message = "Org registration auth is required. Provide either a secret ARN or client_id and client_secret."
-    }
-
-    # Only validate inline if NOT using ARN
-    precondition {
-      condition = (
-        var.upwind_disable_org_discovery_role_registration ||
-        !local.condition_is_management_account ||
-        local.condition_org_register_use_arn ||
-        !local.condition_org_register_secret_value_provided ||
-        local.condition_org_register_client_id_provided
-      )
-      error_message = "Org registration auth: client_id is missing. Client Secret and ID must be provided."
-    }
-
-    precondition {
-      condition = (
-        var.upwind_disable_org_discovery_role_registration ||
-        !local.condition_is_management_account ||
-        local.condition_org_register_use_arn ||
-        !local.condition_org_register_client_id_provided ||
-        local.condition_org_register_secret_value_provided
-      )
-      error_message = "Org registration auth: client_secret is missing. Client Secret and ID must be provided."
-    }
-
-    precondition {
-      condition     = var.upwind_disable_org_discovery_role_registration || !local.condition_is_management_account || !local.condition_org_register_invalid_both_provided
-      error_message = "Org registration auth: provide either a secret ARN OR client_id/client_secret, not both."
-    }
-
-    precondition {
-      condition = (
-        var.upwind_disable_org_discovery_role_registration ||
-        !local.condition_is_management_account ||
-        local.condition_org_register_use_arn ||
-        !local.condition_org_register_partial_inline
-      )
-      error_message = "Org registration auth: both client_id and client_secret must be provided together."
-    }
-  }
-}

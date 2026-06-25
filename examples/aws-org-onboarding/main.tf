@@ -5,14 +5,7 @@ provider "aws" {}
 # This module can be applied to multiple accounts to create the necessary resources. It is expected that the module will be run
 # by a deployment tool such as terraform - capable of applying the terraform to multiple accounts.
 module "upwind_org_account_onboarding" {
-  source = "../../modules/aws-org-onboarding"
-
-  # Variables required when performing the Org Discovery role registrations
-  upwind_region                         = "us" # Default value - not required for US region
-  upwind_org_register_auth_client_id    = "dfsfsfsdfsfsdf"
-  upwind_org_register_auth_secret_value = "sfsfsfsfsdsdf"
-  upwind_organization_id                = "org_2rNHQxTwevbcc7a2" # Required for API access 
-  #  upwind_disable_org_discovery_role_registration = true
+  source = "../../modules/main/aws-org-onboarding"
 
   external_id                         = "1123345"
   management_account_id               = "350776374247"

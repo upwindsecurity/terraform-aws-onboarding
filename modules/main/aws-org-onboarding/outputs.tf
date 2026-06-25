@@ -51,15 +51,6 @@ output "upwind_release_version" {
   description = "The release version tag assigned to the deployment. For version visibility."
   value       = local.upwind_version
 }
-output "org_registration_response" {
-  description = "Org role registration response"
-  value       = one(module.register_org_discovery_role[*])
-}
-
-output "org_registration_response_state" {
-  description = "Org role registration response state"
-  value       = one(module.register_org_discovery_role[*].org_role_register_state)
-}
 
 output "cloudscanner_saas_customer_assume_role_arn" {
   description = "The ARN of the CloudScanner SaaS customer assume role. Only set when is_saas = true and applied to the orchestrator account."

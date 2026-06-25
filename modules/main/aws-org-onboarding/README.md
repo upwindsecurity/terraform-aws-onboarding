@@ -1,3 +1,4 @@
+<!-- BEGIN_TF_DOCS -->
 
 # Upwind AWS Organization Onboarding Terraform module
 This module defines the IAM roles, policies and resources necessary to onboard the accounts of an AWS Organization
@@ -136,10 +137,6 @@ module "upwind_aws_org_onboarding" {
 
    external_id                           = "F083B753-06B5-40B2-BE41-4035D6A7B6C7"
    
-   upwind_org_register_auth_client_id    = "<<org-registrationation-client_id>>"
-   upwind_org_register_auth_secret_value = "<<org-registrationation-client_secret>>"
-   upwind_organization_id                = "org_abcdefrg" 
-   
    orchestrator_account_id               = "123456789012"
    management_account_id                 = "098765432109"
    install_roles_in_management_account   = "true"
@@ -210,10 +207,6 @@ module "upwind_aws_org_onboarding" {
 
   external_id                           = "F083B753-06B5-40B2-BE41-4035D6A7B6C7"
   
-  upwind_org_register_auth_client_id    = "<<org-registrationation-client_id>>"
-  upwind_org_register_auth_secret_value = "<<org-registrationation-client_secret>>"
-  upwind_organization_id                = "org_abcdefrg" 
-  
   orchestrator_account_id               = "123456789012"
   management_account_id                 = "098765432109"
   install_roles_in_management_account   = "true"
@@ -261,11 +254,7 @@ module "upwind_aws_org_onboarding" {
    source = "https://get.upwind.io/terraform/modules/aws-org-onboarding/aws-org-onboarding-X.Y.Z.tar.gz"
 
    external_id                           = "F083B753-06B5-40B2-BE41-4035D6A7B6C7"
-   
-   upwind_org_register_auth_client_id    = "<<org-registrationation-client_id>>"
-   upwind_org_register_auth_secret_value = "<<org-registrationation-client_secret>>"
-   upwind_organization_id                = "org_abcdefrg" 
-   
+
    orchestrator_account_id               = "123456789012"
    management_account_id                 = "098765432109"
    install_roles_in_management_account   = "true"
@@ -299,9 +288,8 @@ output "org_registration_response_state" {
 
 | Name | Version |
 | ---- | ------- |
-| <a name="provider_aws"></a> [aws](#provider\_aws) | >= 5.32.0 |
-| <a name="provider_null"></a> [null](#provider\_null) | ~> 3.0 |
-| <a name="provider_time"></a> [time](#provider\_time) | ~> 0.13 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.45.0 |
+| <a name="provider_null"></a> [null](#provider\_null) | 3.3.0 |
 ## Outputs
 
 | Name | Description |
@@ -312,10 +300,10 @@ output "org_registration_response_state" {
 | <a name="output_cloudscanner_admin_role_name"></a> [cloudscanner\_admin\_role\_name](#output\_cloudscanner\_admin\_role\_name) | The Name of the CloudScanner admin IAM role created for managing cloud scanning operations. |
 | <a name="output_cloudscanner_execution_role_arn"></a> [cloudscanner\_execution\_role\_arn](#output\_cloudscanner\_execution\_role\_arn) | The ARN of the CloudScanner execution IAM role created for performing cloud scanning operations. |
 | <a name="output_cloudscanner_execution_role_name"></a> [cloudscanner\_execution\_role\_name](#output\_cloudscanner\_execution\_role\_name) | The Name of the CloudScanner execution IAM role created for performing cloud scanning operations. |
+| <a name="output_cloudscanner_saas_customer_assume_role_arn"></a> [cloudscanner\_saas\_customer\_assume\_role\_arn](#output\_cloudscanner\_saas\_customer\_assume\_role\_arn) | The ARN of the CloudScanner SaaS customer assume role. Only set when is\_saas = true and applied to the orchestrator account. |
+| <a name="output_cloudscanner_saas_customer_assume_role_name"></a> [cloudscanner\_saas\_customer\_assume\_role\_name](#output\_cloudscanner\_saas\_customer\_assume\_role\_name) | The name of the CloudScanner SaaS customer assume role. Only set when is\_saas = true and applied to the orchestrator account. |
 | <a name="output_cloudscanner_secret_arn"></a> [cloudscanner\_secret\_arn](#output\_cloudscanner\_secret\_arn) | The ARN of the CloudScanner Credentials secret. |
 | <a name="output_cloudscanner_secret_name"></a> [cloudscanner\_secret\_name](#output\_cloudscanner\_secret\_name) | The name of the CloudScanner Credentials secret. |
-| <a name="output_org_registration_response"></a> [org\_registration\_response](#output\_org\_registration\_response) | Org role registration response |
-| <a name="output_org_registration_response_state"></a> [org\_registration\_response\_state](#output\_org\_registration\_response\_state) | Org role registration response state |
 | <a name="output_organization_discovery_role_arn"></a> [organization\_discovery\_role\_arn](#output\_organization\_discovery\_role\_arn) | The ARN of the IAM role created for account discovery purposes. This ARN should be entered in to the Upwind Console |
 | <a name="output_organization_discovery_role_name"></a> [organization\_discovery\_role\_name](#output\_organization\_discovery\_role\_name) | The Name of the IAM role created for account discovery purposes. |
 | <a name="output_upwind_release_version"></a> [upwind\_release\_version](#output\_upwind\_release\_version) | The release version tag assigned to the deployment. For version visibility. |
@@ -333,12 +321,15 @@ output "org_registration_response_state" {
 | <a name="input_aws_iam_role_creation_wait_time"></a> [aws\_iam\_role\_creation\_wait\_time](#input\_aws\_iam\_role\_creation\_wait\_time) | The duration of time to wait for the completion of the IAM role creation. | `string` | `"20s"` | no |
 | <a name="input_cloudscanner_administration_role_name"></a> [cloudscanner\_administration\_role\_name](#input\_cloudscanner\_administration\_role\_name) | The base name of the IAM administration role to be created, used for cloud scanning operations. | `string` | `"UpwindCloudScannerAdministrationRole"` | no |
 | <a name="input_cloudscanner_execution_role_name"></a> [cloudscanner\_execution\_role\_name](#input\_cloudscanner\_execution\_role\_name) | The base name of the IAM execution role to be created, used for cloud scanning operations. | `string` | `"UpwindCloudScannerExecutionRole"` | no |
+| <a name="input_cloudscanner_saas_customer_assume_role_name"></a> [cloudscanner\_saas\_customer\_assume\_role\_name](#input\_cloudscanner\_saas\_customer\_assume\_role\_name) | Base name of the IAM role created in the orchestrator account that the Upwind SaaS account assumes to perform scanning. Only used when is\_saas = true. | `string` | `"UpwindCloudScannerCustomerAssumeRole"` | no |
+| <a name="input_cloudscanner_saas_trusted_account_id"></a> [cloudscanner\_saas\_trusted\_account\_id](#input\_cloudscanner\_saas\_trusted\_account\_id) | The AWS account ID of the Upwind SaaS account that will assume the customer assume role. Required when is\_saas = true. | `string` | `null` | no |
 | <a name="input_cloudscanner_secret_name"></a> [cloudscanner\_secret\_name](#input\_cloudscanner\_secret\_name) | The base name used when creating the CloudScanner credentials secret. | `string` | `"/cloudscanner-credentials"` | no |
 | <a name="input_credentials_secret_name_prefix"></a> [credentials\_secret\_name\_prefix](#input\_credentials\_secret\_name\_prefix) | The prefix for the AWS Secrets Manager secret name storing Upwind client credentials. Used to create the secret if `UpwindClientId` and `UpwindClientSecret` are provided. | `string` | `"/upwind"` | no |
 | <a name="input_current_account_id"></a> [current\_account\_id](#input\_current\_account\_id) | (Optional). Explicit account ID for AWS account being configured. Provide this when using upwind\_agentless\_k8s\_account\_whitelist so terraform can determine resource creation during plan | `string` | `null` | no |
 | <a name="input_custom_tags"></a> [custom\_tags](#input\_custom\_tags) | Custom tags which shall be applied to each resource created by the module. | `map(string)` | `{}` | no |
 | <a name="input_external_id"></a> [external\_id](#input\_external\_id) | The external ID for secure cross-account role assumption. | `string` | n/a | yes |
 | <a name="input_install_roles_in_management_account"></a> [install\_roles\_in\_management\_account](#input\_install\_roles\_in\_management\_account) | Install the additional roles in the management account - if required. | `bool` | `false` | no |
+| <a name="input_is_saas"></a> [is\_saas](#input\_is\_saas) | When true, configures the module for Upwind SaaS-managed CloudScanner deployment. In SaaS mode the CloudScanner admin role and credentials secret are not created; instead a customer assume role is created that the Upwind SaaS account can assume. | `bool` | `false` | no |
 | <a name="input_management_account_id"></a> [management\_account\_id](#input\_management\_account\_id) | The account ID of the AWS Organization management account. The Org discover role will be created in this account. | `string` | n/a | yes |
 | <a name="input_orchestrator_account_id"></a> [orchestrator\_account\_id](#input\_orchestrator\_account\_id) | The account ID of the Upwind orchestrator account. If specified, certain roles will only be created in this account to maintain operational security and control. | `string` | `null` | no |
 | <a name="input_organization_role_name"></a> [organization\_role\_name](#input\_organization\_role\_name) | The base name of the IAM role to be created, used for account discovery within the AWS Org. | `string` | `"UpwindOrganizationServiceRole"` | no |
@@ -352,16 +343,10 @@ output "org_registration_response_state" {
 | <a name="input_upwind_cloudscanner_auth_secret_arn"></a> [upwind\_cloudscanner\_auth\_secret\_arn](#input\_upwind\_cloudscanner\_auth\_secret\_arn) | The ARN of the secret containing the CloudScanner credentials. | `string` | `null` | no |
 | <a name="input_upwind_cloudscanner_auth_secret_value"></a> [upwind\_cloudscanner\_auth\_secret\_value](#input\_upwind\_cloudscanner\_auth\_secret\_value) | The CloudScanner client secret for Upwind Security authentication. | `string` | `null` | no |
 | <a name="input_upwind_cloudscanner_management_enabled"></a> [upwind\_cloudscanner\_management\_enabled](#input\_upwind\_cloudscanner\_management\_enabled) | Enable the permissions necessary to support automated CloudScanner deployment and management. | `bool` | `true` | no |
-| <a name="input_upwind_disable_org_discovery_role_registration"></a> [upwind\_disable\_org\_discovery\_role\_registration](#input\_upwind\_disable\_org\_discovery\_role\_registration) | Disable the Org discovery role registration process. | `bool` | `false` | no |
 | <a name="input_upwind_feature_dspm_account_whitelist"></a> [upwind\_feature\_dspm\_account\_whitelist](#input\_upwind\_feature\_dspm\_account\_whitelist) | (Optional). If set, and given upwind\_feature\_dspm\_enabled is true, this will limit the accounts that we create the DSPM S3 permissions in | `list(string)` | `[]` | no |
 | <a name="input_upwind_feature_dspm_enabled"></a> [upwind\_feature\_dspm\_enabled](#input\_upwind\_feature\_dspm\_enabled) | Enable the creation of roles to enable DSPM scanning. This includes permissions to access the the contents of S3 buckets. | `bool` | `true` | no |
 | <a name="input_upwind_include_ec2_network_management_permissions"></a> [upwind\_include\_ec2\_network\_management\_permissions](#input\_upwind\_include\_ec2\_network\_management\_permissions) | Include permissions necessary to create and manage EC2 network resources. | `bool` | `true` | no |
 | <a name="input_upwind_integration_endpoint"></a> [upwind\_integration\_endpoint](#input\_upwind\_integration\_endpoint) | The Integration API endpoint. | `string` | `"https://integration.upwind.io"` | no |
-| <a name="input_upwind_org_register_auth_client_id"></a> [upwind\_org\_register\_auth\_client\_id](#input\_upwind\_org\_register\_auth\_client\_id) | The client ID used for authentication with the Upwind Authorization Service. | `string` | `null` | no |
-| <a name="input_upwind_org_register_auth_secret_arn"></a> [upwind\_org\_register\_auth\_secret\_arn](#input\_upwind\_org\_register\_auth\_secret\_arn) | The ARN of a secret containing the org registration secret. | `string` | `null` | no |
-| <a name="input_upwind_org_register_auth_secret_value"></a> [upwind\_org\_register\_auth\_secret\_value](#input\_upwind\_org\_register\_auth\_secret\_value) | The client secret for authentication with the Upwind Authorization Service. | `string` | `null` | no |
-| <a name="input_upwind_organization_id"></a> [upwind\_organization\_id](#input\_upwind\_organization\_id) | The identifier of the Upwind organization to integrate with. | `string` | `null` | no |
-| <a name="input_upwind_region"></a> [upwind\_region](#input\_upwind\_region) | Which Upwind region to communicate with. 'us', 'eu' or 'me', or custom region. | `string` | `"us"` | no |
 | <a name="input_upwind_trusted_account_id"></a> [upwind\_trusted\_account\_id](#input\_upwind\_trusted\_account\_id) | The identifier of the trusted account used for IAM cross-account access. | `string` | `"340457201789"` | no |
 ## Resources
 
@@ -369,6 +354,6 @@ output "org_registration_response_state" {
 | ---- | ---- |
 | [null_resource.validate_cloudscanner_auth](https://registry.terraform.io/providers/hashicorp/null/latest/docs/resources/resource) | resource |
 | [null_resource.validate_management_account](https://registry.terraform.io/providers/hashicorp/null/latest/docs/resources/resource) | resource |
-| [null_resource.validate_org_register_auth](https://registry.terraform.io/providers/hashicorp/null/latest/docs/resources/resource) | resource |
-| [time_sleep.wait_for_org_discovery_role_creation](https://registry.terraform.io/providers/hashicorp/time/latest/docs/resources/sleep) | resource |
+| [null_resource.validate_saas_config](https://registry.terraform.io/providers/hashicorp/null/latest/docs/resources/resource) | resource |
 | [aws_caller_identity.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/caller_identity) | data source |
+<!-- END_TF_DOCS -->
