@@ -148,7 +148,8 @@
       {
         "assets": [
           "CHANGELOG.md",
-          "modules/**/version.tf"
+          "modules/**/version.tf",
+          "modules/**/locals.tf"
         ],
         "message": "chore(release): ${nextRelease.version} [skip ci]"
       }
