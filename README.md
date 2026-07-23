@@ -11,19 +11,19 @@ documentation generation, and release management.
 
 This repository contains the following Terraform modules:
 
-- [modules/main/](./modules/main/) - Main module with core functionality
+- [modules/main/](https://github.com/upwindsecurity/terraform-aws-onboarding/tree/main/modules/main) - Main module with core functionality
 - Additional modules can be added to extend functionality
 
 ## Examples
 
-Complete usage examples are available in the [examples](./examples/) directory:
+Complete usage examples are available in the [examples](https://github.com/upwindsecurity/terraform-aws-onboarding/tree/main/examples) directory:
 
-- [examples/basic/](./examples/basic/) - Basic usage of the main module
-- [examples/complete/](./examples/complete/) - Advanced configuration patterns with multiple module instances
+- [examples/basic/](https://github.com/upwindsecurity/terraform-aws-onboarding/tree/main/examples/basic) - Basic usage of the main module
+- [examples/complete/](https://github.com/upwindsecurity/terraform-aws-onboarding/tree/main/examples/complete) - Advanced configuration patterns with multiple module instances
 
 ## Contributing
 
-We welcome contributions! Please see our [CONTRIBUTING.md](./CONTRIBUTING.md) guide for details on:
+We welcome contributions! Please see our [CONTRIBUTING.md](https://github.com/upwindsecurity/terraform-aws-onboarding/blob/main/CONTRIBUTING.md) guide for details on:
 
 - Development setup and workflows
 - Testing procedures
@@ -36,15 +36,15 @@ For bug reports and feature requests, please use
 ## Versioning ##
 
 We use [Semantic Versioning](http://semver.org/) for releases. For the versions
-available, see the [tags on this repository](https://github.com/upwindsecurity/terraform-module/tags).
+available, see the [releases on this repository](https://github.com/upwindsecurity/terraform-aws-onboarding/releases).
 
 ## License
 
-This project is licensed under the Apache License 2.0. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the Apache License 2.0. See the [LICENSE](https://github.com/upwindsecurity/terraform-aws-onboarding/blob/main/LICENSE) file for details.
 
 ## Support ##
 
 - [Documentation](https://docs.upwind.io)
-- [Issues](https://github.com/upwindsecurity/terraform-module/issues)
-- [Contributing Guide](./CONTRIBUTING.md)
+- [Issues](https://github.com/upwindsecurity/terraform-aws-onboarding/issues)
+- [Contributing Guide](https://github.com/upwindsecurity/terraform-aws-onboarding/blob/main/CONTRIBUTING.md)
 
