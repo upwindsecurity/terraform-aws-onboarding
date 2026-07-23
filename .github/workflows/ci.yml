@@ -47,7 +47,7 @@ jobs:
         terraform_version: ${{ env.TERRAFORM_VERSION }}
 
     - name: Check Terraform Format
-      run: terraform fmt -check -recursive modules/
+      run: terraform fmt -check -recursive modules/ examples/
 
     - name: Run Terraform Init
       run: terraform init
@@ -87,7 +87,7 @@ jobs:
       run: tflint --init --config .config/.tflint.hcl
 
     - name: Run TFLint
-      run: tflint -f compact --minimum-failure-severity=error --config ../../.config/.tflint.hcl
+      run: tflint -f compact --minimum-failure-severity=error --config "$GITHUB_WORKSPACE/.config/.tflint.hcl"
       working-directory: modules/${{ matrix.module }}
 
   terraform-docs:
@@ -107,7 +107,7 @@ jobs:
       uses: terraform-docs/gh-actions@v1.4.1
       with:
         working-dir: modules/${{ matrix.module }}
-        config-file: ../../.config/.terraform-docs.yml
+        config-file: .docs/.tfdocs-config.yml
         output-file: README.md
         fail-on-diff: "false"
         template: ""
@@ -120,7 +120,7 @@ jobs:
           git diff modules/${{ matrix.module }}/README.md
           echo "::endgroup::"
           echo ""
-          echo "To fix this, run: make docs"
+          echo "To fix this, run: (cd modules/${{ matrix.module }} && terraform-docs --config .docs/.tfdocs-config.yml --output-file README.md .)"
           exit 1
         else
           echo "Terraform docs are up to date"

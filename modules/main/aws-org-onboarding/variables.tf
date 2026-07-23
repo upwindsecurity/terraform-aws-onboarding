@@ -308,24 +308,6 @@ variable "upwind_agentless_k8s_eks_admin_view_policy_enabled" {
 }
 
 
-variable "upwind_auth_endpoint" {
-  description = "The Authentication API endpoint."
-  type        = string
-  default     = "https://auth.upwind.io"
-}
-
-variable "upwind_integration_endpoint" {
-  description = "The Integration API endpoint."
-  type        = string
-  default     = "https://integration.upwind.io"
-}
-
-variable "aws_iam_role_creation_wait_time" {
-  description = "The duration of time to wait for the completion of the IAM role creation."
-  type        = string
-  default     = "20s"
-}
-
 #######################################################################################
 # The following variables configure SaaS deployment mode
 #######################################################################################
