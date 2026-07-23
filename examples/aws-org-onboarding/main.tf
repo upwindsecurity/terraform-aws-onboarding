@@ -4,7 +4,9 @@ provider "aws" {}
 # This module can be applied to multiple accounts to create the necessary resources. It is expected that the module will be run
 # by a deployment tool such as Terragrunt - capable of applying the terraform to multiple accounts.
 module "upwind_org_account_onboarding" {
-  source = "../../modules/main/aws-org-onboarding"
+  source = "upwindsecurity/onboarding/aws//modules/main/aws-org-onboarding"
+  # No version constraint means the latest published release is used.
+  # Pin to a release range in production, e.g. version = "~> 2.0".
 
   # The external ID is provided by Upwind as part of the onboarding process.
   external_id                         = "F083B753-06B5-40B2-BE41-4035D6A7B6C7"
