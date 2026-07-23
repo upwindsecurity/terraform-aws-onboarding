@@ -31,7 +31,7 @@ We welcome contributions! Please see our [CONTRIBUTING.md](https://github.com/up
 - How to add new submodules
 
 For bug reports and feature requests, please use
-[GitHub Issues](https://github.com/upwindsecurity/terraform-module/issues).
+[GitHub Issues](https://github.com/upwindsecurity/terraform-aws-onboarding/issues).
 
 ## Versioning ##
 
