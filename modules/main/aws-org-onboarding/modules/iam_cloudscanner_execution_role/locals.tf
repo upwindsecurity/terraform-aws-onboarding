@@ -1,5 +1,5 @@
 locals {
-  upwind_version = "TF-2.1.13"
+  upwind_version = "TF-2.1.16"
   aws_account_id = data.aws_caller_identity.current.account_id
 
   dspm_account_allowed = (
