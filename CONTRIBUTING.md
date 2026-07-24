@@ -321,7 +321,7 @@ The project includes GitHub Actions workflows for:
 
 ```bash
 # Manually run terraform-docs
-terraform-docs markdown table --output-file README.md modules/aws-org-onboarding/
+terraform-docs markdown table --output-file README.md .
 ```
 
 **Pre-commit hooks failing**:

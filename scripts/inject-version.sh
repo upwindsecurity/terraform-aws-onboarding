@@ -30,4 +30,4 @@ while IFS= read -r file; do
   tmp="$(mktemp)"
   sed -E "s/(upwind_version[[:space:]]*=[[:space:]]*)\"[^\"]*\"/\1\"TF-${VERSION}\"/" "$file" > "$tmp"
   mv "$tmp" "$file"
-done < <(grep -rl --include='*.tf' 'upwind_version[[:space:]]*=' modules)
+done < <(grep -rl --include='*.tf' --exclude-dir='.terraform' 'upwind_version[[:space:]]*=' *.tf modules 2>/dev/null)

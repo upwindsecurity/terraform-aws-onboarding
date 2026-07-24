@@ -1,7 +1,7 @@
 # AWS Organization Onboarding Example
 
 This example demonstrates how to use the
-[aws-org-onboarding](https://github.com/upwindsecurity/terraform-aws-onboarding/tree/main/modules/aws-org-onboarding)
+[aws-org-onboarding](https://github.com/upwindsecurity/terraform-aws-onboarding)
 module to onboard the accounts of an AWS Organization into Upwind.
 
 The module is intended to be applied to every account in the organization,
@@ -33,11 +33,12 @@ provider "aws" {
 # This module can be applied to multiple accounts to create the necessary resources. It is expected that the module will be run
 # by a deployment tool such as Terragrunt - capable of applying the terraform to multiple accounts.
 module "upwind_org_account_onboarding" {
-  source = "upwindsecurity/onboarding/aws//modules/aws-org-onboarding"
+  source = "upwindsecurity/onboarding/aws"
   # Get versions from https://registry.terraform.io/modules/upwindsecurity/onboarding/aws/latest
-  # The modules/aws-org-onboarding path exists from 3.0.0 onwards; earlier
-  # versions used modules/main/aws-org-onboarding.
-  version = "~> 3.0"
+  # The root-module source exists from 4.0.0 onwards; earlier versions used
+  # the //modules/aws-org-onboarding (3.x) or //modules/main/aws-org-onboarding
+  # (2.x) submodule paths.
+  version = "~> 4.0"
 
   # The external ID is provided by Upwind as part of the onboarding process.
   external_id                         = "F083B753-06B5-40B2-BE41-4035D6A7B6C7"

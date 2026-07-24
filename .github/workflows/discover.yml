@@ -4,7 +4,7 @@ on:
   workflow_call:
     outputs:
       modules:
-        description: "JSON list of Terraform module directories, relative to modules/"
+        description: "JSON list of Terraform module directories, relative to the repository root (\".\" is the root module)"
         value: ${{ jobs.discover.outputs.modules }}
       examples:
         description: "JSON list of example directories, relative to examples/"
@@ -24,12 +24,13 @@ jobs:
     - name: Set Matrix
       id: set-matrix
       run: |
-        # Discover module roots: any directory under modules/ containing a main.tf.
-        # Nested submodules (kept in a modules/ subdirectory of their parent module)
-        # are excluded as they are initialised and validated via their parent.
-        modules=$(find modules -type f -name "main.tf" \
-          | sed 's|^modules/||; s|/main\.tf$||' \
-          | grep -vE '(^|/)modules(/|$)' \
+        # Discover module roots: any directory containing a main.tf, relative to
+        # the repository root ("." is the root module). Internal submodules (kept
+        # in a modules/ subdirectory of their parent module) and examples are
+        # excluded — they are initialised and validated via their parent module.
+        modules=$(find . -type f -name "main.tf" -not -path "*/.*" \
+          | sed 's|^\./||; s|main\.tf$||; s|/$||; s|^$|.|' \
+          | grep -vE '(^|/)(modules|examples)(/|$)' \
           | sort \
           | jq --raw-input --slurp --compact-output 'split("\n")[:-1]')
         echo "modules=${modules}" >> "$GITHUB_OUTPUT"
