@@ -70,8 +70,11 @@ jobs:
         # Parse modules JSON array and iterate
         for module in $(echo '${{ needs.discover-modules.outputs.modules }}' | jq -r '.[]'); do
           echo "Creating $module module package..."
+          # Module paths may be nested (e.g. main/aws-org-onboarding);
+          # flatten slashes so the artifact filename is valid.
+          module_slug=${module//\//-}
           tar --exclude-from $GITHUB_WORKSPACE/.gitignore \
-            -czf $GITHUB_WORKSPACE/release-artifacts/${REPO_NAME}-${module}-${{ steps.release.outputs.new_release_version }}.tar.gz \
+            -czf $GITHUB_WORKSPACE/release-artifacts/${REPO_NAME}-${module_slug}-${{ steps.release.outputs.new_release_version }}.tar.gz \
             -C $GITHUB_WORKSPACE/modules/$module .
         done
 
