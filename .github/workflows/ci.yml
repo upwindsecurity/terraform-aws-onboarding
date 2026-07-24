@@ -51,11 +51,11 @@ jobs:
 
     - name: Run Terraform Init
       run: terraform init
-      working-directory: modules/${{ matrix.module }}
+      working-directory: ${{ matrix.module }}
 
     - name: Run Terraform Validate
       run: terraform validate
-      working-directory: modules/${{ matrix.module }}
+      working-directory: ${{ matrix.module }}
 
   terraform-tflint:
     name: Terraform Lint (${{ matrix.module }})
@@ -88,7 +88,7 @@ jobs:
 
     - name: Run TFLint
       run: tflint -f compact --minimum-failure-severity=error --config "$GITHUB_WORKSPACE/.config/.tflint.hcl"
-      working-directory: modules/${{ matrix.module }}
+      working-directory: ${{ matrix.module }}
 
   terraform-docs:
     name: Terraform Docs (${{ matrix.module }})
@@ -106,7 +106,7 @@ jobs:
     - name: Run Terraform Docs
       uses: terraform-docs/gh-actions@v1.4.1
       with:
-        working-dir: modules/${{ matrix.module }}
+        working-dir: ${{ matrix.module }}
         config-file: .docs/.tfdocs-config.yml
         output-file: README.md
         fail-on-diff: "false"
@@ -114,13 +114,13 @@ jobs:
 
     - name: Check For Changes
       run: |
-        if [[ -n $(git diff --name-only modules/${{ matrix.module }}/README.md) ]]; then
+        if [[ -n $(git diff --name-only ${{ matrix.module }}/README.md) ]]; then
           echo "::error::Terraform docs are out of sync!"
           echo "::group::Diff output"
-          git diff modules/${{ matrix.module }}/README.md
+          git diff ${{ matrix.module }}/README.md
           echo "::endgroup::"
           echo ""
-          echo "To fix this, run: (cd modules/${{ matrix.module }} && terraform-docs --config .docs/.tfdocs-config.yml --output-file README.md .)"
+          echo "To fix this, run: (cd ${{ matrix.module }} && terraform-docs --config .docs/.tfdocs-config.yml --output-file README.md .)"
           exit 1
         else
           echo "Terraform docs are up to date"
