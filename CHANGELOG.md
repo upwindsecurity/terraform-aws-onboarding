@@ -6,6 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [4.0.0](https://github.com/upwindsecurity/terraform-aws-onboarding/compare/v3.0.1...v4.0.0) (2026-07-24)
+
+### ⚠ BREAKING CHANGES
+
+* **UP-3933:** the module source is now the registry root
+(upwindsecurity/onboarding/aws) instead of the
+//modules/aws-org-onboarding submodule path. The standalone release
+artifact is renamed from terraform-aws-onboarding-aws-org-onboarding-<ver>.tar.gz
+to terraform-aws-onboarding-<ver>.tar.gz. 2.x/3.x versions keep their old
+paths.
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+
+### Features
+
+* **UP-3933:** promote aws-org-onboarding to the repository root module ([4f640b6](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/4f640b605d6d02b14fae5ab5a6c2f35a32044efa))
+
 ## [3.0.1](https://github.com/upwindsecurity/terraform-aws-onboarding/compare/v3.0.0...v3.0.1) (2026-07-24)
 
 ### Documentation
