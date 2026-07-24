@@ -6,6 +6,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [3.0.0](https://github.com/upwindsecurity/terraform-aws-onboarding/compare/v2.1.15...v3.0.0) (2026-07-24)
+
+### ⚠ BREAKING CHANGES
+
+* **UP-3933:** the submodule source path changed from
+upwindsecurity/onboarding/aws//modules/main/aws-org-onboarding to
+upwindsecurity/onboarding/aws//modules/aws-org-onboarding. Consumers must
+update their module source when upgrading to 3.x; 2.x versions keep the
+old path.
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+
+### Features
+
+* **UP-3933:** flatten module layout to modules/aws-org-onboarding ([88bbbb0](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/88bbbb0351df55e5555ea4b39b8a9eb8cb32ca31))
+
+### Bug Fixes
+
+* **UP-3933:** fixing broken tar build in ci ([9c31d55](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/9c31d557c603626ad8bacb7f50a78a1c977c7ed1))
+* **UP-3933:** fixing examples, ci and removing dead vars ([3f49bb3](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/3f49bb3ab31ab3adf68eeaee9248f872e170d661))
+
 ## [2.1.17](https://github.com/upwindsecurity/terraform-aws-onboarding/compare/v2.1.16...v2.1.17) (2026-07-24)
 
 ### Bug Fixes

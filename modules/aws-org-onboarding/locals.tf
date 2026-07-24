@@ -1,7 +1,7 @@
 locals {
   # The upwind_version is defined as part of the release management and is used for version identification.
   # It must be maintained.
-  upwind_version = "TF-2.1.17"
+  upwind_version = "TF-3.0.0"
 
   # The upwind_trust_arn is included in the trusted identity of roles which can be assumed by the Upwind SaaS.
   upwind_trusted_arn = "arn:aws:iam::${var.upwind_trusted_account_id}:root"
