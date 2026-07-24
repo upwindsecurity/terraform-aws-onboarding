@@ -6,6 +6,12 @@ VERSION="$1"
 for module in modules/*; do
   [ -d "$module" ] || continue
 
+  # Skip modules that already declare upwind_version in their own .tf files
+  # (e.g. in locals.tf) — writing version.tf too would define the local twice.
+  if grep -qs 'upwind_version[[:space:]]*=' "$module"/*.tf; then
+    continue
+  fi
+
   cat > "$module/version.tf" <<EOF
 locals {
   upwind_version = "TF-${VERSION}"
