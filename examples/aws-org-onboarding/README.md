@@ -1,7 +1,7 @@
 # AWS Organization Onboarding Example
 
 This example demonstrates how to use the
-[aws-org-onboarding](https://github.com/upwindsecurity/terraform-aws-onboarding/tree/main/modules/main/aws-org-onboarding)
+[aws-org-onboarding](https://github.com/upwindsecurity/terraform-aws-onboarding/tree/main/modules/aws-org-onboarding)
 module to onboard the accounts of an AWS Organization into Upwind.
 
 The module is intended to be applied to every account in the organization,

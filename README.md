@@ -13,13 +13,13 @@ accounts in your organization.
 
 This repository contains the following Terraform modules:
 
-- [modules/main/aws-org-onboarding/](https://github.com/upwindsecurity/terraform-aws-onboarding/tree/main/modules/main/aws-org-onboarding) -
+- [modules/aws-org-onboarding/](https://github.com/upwindsecurity/terraform-aws-onboarding/tree/main/modules/aws-org-onboarding) -
   Creates the IAM roles, policies and resources required to onboard the
   accounts of an AWS Organization into Upwind. The module is designed to be
   applied to each account in the organization (for example via Terragrunt or a
   similar IaC tool), creating the appropriate resources based on the account
   type (management, orchestrator or other). See the
-  [module README](https://github.com/upwindsecurity/terraform-aws-onboarding/blob/main/modules/main/aws-org-onboarding/README.md)
+  [module README](https://github.com/upwindsecurity/terraform-aws-onboarding/blob/main/modules/aws-org-onboarding/README.md)
   for a full description of the onboarding process, the roles created, and the
   available inputs and outputs.
 

@@ -30,7 +30,7 @@ content: |-
   The process can be initiated through the Upwind console which guides the user through the process, before applying 
   this module to the accounts to create the necessary IAM roles and polices etc.
   Once onboarded, it will be possible to inspect the accounts from inside the Upwind console.
-  ![image info](https://github.com/upwindsecurity/terraform-aws-onboarding/raw/main/modules/main/aws-org-onboarding/.docs/AWSOrgScreenshot1.png)
+  ![image info](https://github.com/upwindsecurity/terraform-aws-onboarding/raw/main/modules/aws-org-onboarding/.docs/AWSOrgScreenshot1.png)
   ## Account Types
   Notionally the onboarding process takes 3 account types into consideration.
   * Management account: An account with delegated permissions which should be used to manage the remaining accounts within the
@@ -52,7 +52,7 @@ content: |-
   ### Organization Discovery role
   The Organization discovery role is a read only role which can be assumed and is used to discover the accounts within
   the AWS organization. It is assumed by Upwind to discover the accounts and account structure within the AWS organization.
-  The definition for the role can be found in the [iam_org_discovery_role](https://github.com/upwindsecurity/terraform-aws-onboarding/tree/main/modules/main/aws-org-onboarding/modules/iam_org_discovery_role) submodule, and its creation is conditional so that the role is only created in the
+  The definition for the role can be found in the [iam_org_discovery_role](https://github.com/upwindsecurity/terraform-aws-onboarding/tree/main/modules/aws-org-onboarding/modules/iam_org_discovery_role) submodule, and its creation is conditional so that the role is only created in the
   management account.
   > [!TIP]
   > The Organization Discovery role only needs to be created in the management account.
@@ -60,7 +60,7 @@ content: |-
   The Account Service role, for the most part, is a role that is assumed from Upwind to grant read only and audit access to the account, and which can be created
   in all accounts. In the orchestrator account, if one is selected, the role contains elevated permissions which allow it to be used
   for the installation of CloudScanners.
-  This role is defined in the [iam_account_service_role](https://github.com/upwindsecurity/terraform-aws-onboarding/tree/main/modules/main/aws-org-onboarding/modules/iam_account_service_role) submodule.
+  This role is defined in the [iam_account_service_role](https://github.com/upwindsecurity/terraform-aws-onboarding/tree/main/modules/aws-org-onboarding/modules/iam_account_service_role) submodule.
   > [!TIP]
   > This Account Service role should be created in all accounts which are to be audited or scanned - which may optionally include the management account. If configuring 
   > an orchestrator account the Account Service role must be created in the account with the elevated permissions.
@@ -73,21 +73,21 @@ content: |-
   This role is only created in the orchestrator account - if one has been defined. It is the role granted to the
   CloudScanner resources (Lambdas, ASG and EC2 instances) allowing them to function.
   Note: Removing this role while it has attached resources (eg CloudScanners) should be avoided, as it is connected to these resources.
-  The definition for the role can be found in the [iam_cloudscanner_admin_role](https://github.com/upwindsecurity/terraform-aws-onboarding/tree/main/modules/main/aws-org-onboarding/modules/iam_cloudscanner_admin_role) submodule.
+  The definition for the role can be found in the [iam_cloudscanner_admin_role](https://github.com/upwindsecurity/terraform-aws-onboarding/tree/main/modules/aws-org-onboarding/modules/iam_cloudscanner_admin_role) submodule.
   > [!TIP]
   > The CloudScanner admin role must be created in the orchestrator account if one has been selected.
   ### CloudScanner Execution role
   This role grants the necessary permissions to allows the CloudScanner to perform cross account scans from the orchestrator account. Specifically,
   the role can be assumed by the CloudScanner in the orchestrator account and can be used to create resources such as disk snapshots and fetch lambdas from accounts other 
   than the orchestrator account.
-  The role is defined in the [iam_cloudscanner_execution_role](https://github.com/upwindsecurity/terraform-aws-onboarding/tree/main/modules/main/aws-org-onboarding/modules/iam_cloudscanner_execution_role) submodule.
+  The role is defined in the [iam_cloudscanner_execution_role](https://github.com/upwindsecurity/terraform-aws-onboarding/tree/main/modules/aws-org-onboarding/modules/iam_cloudscanner_execution_role) submodule.
   > [!TIP]
   > The CloudScanner Execution role should be installed in all accounts which are to be scanned.
 
   ### CloudScanner Customer Assume role (SaaS mode)
   When the module is run in SaaS mode (`is_saas = true`), the CloudScanner admin role and the credentials secret are not created. Instead a customer assume role is created in the
   orchestrator account, which the Upwind SaaS account (`cloudscanner_saas_trusted_account_id`) can assume to perform scanning operations.
-  The role is defined in the [iam_cloudscanner_saas_customer_assume_role](https://github.com/upwindsecurity/terraform-aws-onboarding/tree/main/modules/main/aws-org-onboarding/modules/iam_cloudscanner_saas_customer_assume_role) submodule.
+  The role is defined in the [iam_cloudscanner_saas_customer_assume_role](https://github.com/upwindsecurity/terraform-aws-onboarding/tree/main/modules/aws-org-onboarding/modules/iam_cloudscanner_saas_customer_assume_role) submodule.
 
   ### Organization Discovery Role Registration
   Once the Organization Discovery role has been created in the management account, its ARN (available via the `organization_discovery_role_arn` output) must be registered with Upwind.
