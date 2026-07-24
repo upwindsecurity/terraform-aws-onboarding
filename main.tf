@@ -2,6 +2,7 @@
 # and will create IAM roles and resources for each account as described in the README.
 
 data "aws_caller_identity" "current" {}
+data "aws_partition" "current" {}
 
 # The Org discovery only needs to be created in the management account
 module "org_discovery_role" {
@@ -17,6 +18,7 @@ module "org_discovery_role" {
   cloudscanner_admin_role_name                = local.cloudscanner_admin_role_name
   cloudscanner_execution_role_name            = local.cloudscanner_execution_role_name
   upwind_feature_dspm_enabled                 = var.upwind_feature_dspm_enabled
+  upwind_feature_dspm_rds_enabled             = var.upwind_feature_dspm_rds_enabled
   is_saas_mode                                = local.condition_is_saas_mode
   cloudscanner_saas_customer_assume_role_name = local.condition_is_saas_mode ? local.cloudscanner_saas_customer_assume_role_name : null
   upwind_cloudscanner_management_enabled      = var.upwind_cloudscanner_management_enabled
@@ -56,6 +58,7 @@ module "account_service_role" {
 
   # Provide conditional features
   upwind_feature_dspm_enabled                       = var.upwind_feature_dspm_enabled
+  upwind_feature_dspm_rds_enabled                   = var.upwind_feature_dspm_rds_enabled
   upwind_cloudscanner_management_enabled            = var.upwind_cloudscanner_management_enabled
   upwind_include_ec2_network_management_permissions = var.upwind_include_ec2_network_management_permissions
 
@@ -104,9 +107,264 @@ module "cloudscanner_execution_role" {
   upwind_feature_dspm_enabled           = var.upwind_feature_dspm_enabled
   upwind_feature_dspm_account_whitelist = var.upwind_feature_dspm_account_whitelist
 
+  upwind_feature_dspm_rds_enabled           = var.upwind_feature_dspm_rds_enabled
+  upwind_feature_dspm_rds_account_allowlist = var.upwind_feature_dspm_rds_account_allowlist
+
   # SaaS mode trust policy
   is_saas_mode                                = local.condition_is_saas_mode
   cloudscanner_saas_customer_assume_role_name = local.cloudscanner_saas_customer_assume_role_name
+}
+
+# ------------------------------------------------------------------------------------------------
+# DSPM RDS scanning permissions (mirrors the CloudFormation v2 CloudScannerDspmRds*ManagedPolicy in
+# integration-aws-cloudformation). A single shared control-plane managed policy is attached to BOTH the
+# CloudScanner administration role (the executor lambda runs as it) and the execution role (assumed
+# cross-account for the member-side snapshot / re-encrypt / share / delete), plus an administration-role-only
+# VPC ENI policy for the in-VPC executor lambda. Managed rather than inline so they do not count against
+# either role's inline-policy size budget. Created only when DSPM RDS is enabled for this account. Creates
+# and copies require our tag on the new resource (aws:RequestTag); modifies, shares, and deletes are
+# restricted to our own tagged resources (aws:ResourceTag).
+# ------------------------------------------------------------------------------------------------
+resource "aws_iam_policy" "cloudscanner_dspm_rds" {
+  count = local.dspm_rds_enabled && (length(module.cloudscanner_execution_role) > 0 || length(module.cloudscanner_admin_role) > 0) ? 1 : 0
+
+  name        = local.cloudscanner_dspm_rds_policy_name
+  description = "Upwind DSPM RDS scanning permissions: create, copy, restore, share, and delete Upwind-tagged RDS snapshots and scan copies, perform the KMS re-encryption, and log in to discover databases."
+
+  policy = jsonencode(
+    {
+      Version = "2012-10-17"
+      Statement = [
+        {
+          Sid    = "DspmRdsDescribe"
+          Effect = "Allow"
+          Action = [
+            "rds:DescribeDBInstances",
+            "rds:DescribeDBClusters",
+            "rds:DescribeDBSnapshots",
+            "rds:DescribeDBClusterSnapshots"
+          ]
+          Resource = "*"
+        },
+        {
+          Sid    = "DspmRdsCreateSnapshots"
+          Effect = "Allow"
+          Action = [
+            "rds:CreateDBSnapshot",
+            "rds:CreateDBClusterSnapshot"
+          ]
+          Resource = [
+            "arn:${data.aws_partition.current.partition}:rds:*:${data.aws_caller_identity.current.account_id}:db:*",
+            "arn:${data.aws_partition.current.partition}:rds:*:${data.aws_caller_identity.current.account_id}:cluster:*",
+            "arn:${data.aws_partition.current.partition}:rds:*:${data.aws_caller_identity.current.account_id}:snapshot:*",
+            "arn:${data.aws_partition.current.partition}:rds:*:${data.aws_caller_identity.current.account_id}:cluster-snapshot:*"
+          ]
+          Condition = {
+            StringEquals = {
+              "aws:RequestTag/UpwindComponent" = "CloudScanner"
+            }
+          }
+        },
+        {
+          # The copy source may be a cross-account shared snapshot (untagged here, as tags do not cross
+          # accounts), so only the new copy carries the tag condition and the account segment stays "*".
+          Sid    = "DspmRdsCopySnapshots"
+          Effect = "Allow"
+          Action = [
+            "rds:CopyDBSnapshot",
+            "rds:CopyDBClusterSnapshot"
+          ]
+          Resource = [
+            "arn:${data.aws_partition.current.partition}:rds:*:*:snapshot:*",
+            "arn:${data.aws_partition.current.partition}:rds:*:*:cluster-snapshot:*"
+          ]
+          Condition = {
+            StringEquals = {
+              "aws:RequestTag/UpwindComponent" = "CloudScanner"
+            }
+          }
+        },
+        {
+          Sid    = "DspmRdsRestore"
+          Effect = "Allow"
+          Action = [
+            "rds:RestoreDBInstanceFromDBSnapshot",
+            "rds:RestoreDBClusterFromSnapshot",
+            "rds:CreateDBInstance"
+          ]
+          Resource = [
+            "arn:${data.aws_partition.current.partition}:rds:*:${data.aws_caller_identity.current.account_id}:db:*",
+            "arn:${data.aws_partition.current.partition}:rds:*:${data.aws_caller_identity.current.account_id}:cluster:*",
+            "arn:${data.aws_partition.current.partition}:rds:*:${data.aws_caller_identity.current.account_id}:snapshot:*",
+            "arn:${data.aws_partition.current.partition}:rds:*:${data.aws_caller_identity.current.account_id}:cluster-snapshot:*",
+            "arn:${data.aws_partition.current.partition}:rds:*:${data.aws_caller_identity.current.account_id}:subgrp:*"
+          ]
+          Condition = {
+            StringEquals = {
+              "aws:RequestTag/UpwindComponent" = "CloudScanner"
+            }
+          }
+        },
+        {
+          # RDS authorises the Tags field on create/copy/restore as a separate action. TagKeys is restricted
+          # to the single key the executor sets so this cannot stamp any other tag key.
+          Sid    = "DspmRdsTagOnCreate"
+          Effect = "Allow"
+          Action = [
+            "rds:AddTagsToResource"
+          ]
+          Resource = [
+            "arn:${data.aws_partition.current.partition}:rds:*:${data.aws_caller_identity.current.account_id}:db:*",
+            "arn:${data.aws_partition.current.partition}:rds:*:${data.aws_caller_identity.current.account_id}:cluster:*",
+            "arn:${data.aws_partition.current.partition}:rds:*:${data.aws_caller_identity.current.account_id}:snapshot:*",
+            "arn:${data.aws_partition.current.partition}:rds:*:${data.aws_caller_identity.current.account_id}:cluster-snapshot:*"
+          ]
+          Condition = {
+            StringEquals = {
+              "aws:RequestTag/UpwindComponent" = "CloudScanner"
+            }
+            "ForAllValues:StringEquals" = {
+              "aws:TagKeys" = ["UpwindComponent"]
+            }
+          }
+        },
+        {
+          Sid    = "DspmRdsModifyOwn"
+          Effect = "Allow"
+          Action = [
+            "rds:ModifyDBInstance",
+            "rds:ModifyDBCluster"
+          ]
+          Resource = [
+            "arn:${data.aws_partition.current.partition}:rds:*:${data.aws_caller_identity.current.account_id}:db:*",
+            "arn:${data.aws_partition.current.partition}:rds:*:${data.aws_caller_identity.current.account_id}:cluster:*"
+          ]
+          Condition = {
+            StringEquals = {
+              "aws:ResourceTag/UpwindComponent" = "CloudScanner"
+            }
+          }
+        },
+        {
+          Sid    = "DspmRdsShareSnapshots"
+          Effect = "Allow"
+          Action = [
+            "rds:ModifyDBSnapshotAttribute",
+            "rds:ModifyDBClusterSnapshotAttribute"
+          ]
+          Resource = [
+            "arn:${data.aws_partition.current.partition}:rds:*:${data.aws_caller_identity.current.account_id}:snapshot:*",
+            "arn:${data.aws_partition.current.partition}:rds:*:${data.aws_caller_identity.current.account_id}:cluster-snapshot:*"
+          ]
+          Condition = {
+            StringEquals = {
+              "aws:ResourceTag/UpwindComponent" = "CloudScanner"
+            }
+          }
+        },
+        {
+          Sid    = "DspmRdsDeleteOwn"
+          Effect = "Allow"
+          Action = [
+            "rds:DeleteDBInstance",
+            "rds:DeleteDBCluster",
+            "rds:DeleteDBSnapshot",
+            "rds:DeleteDBClusterSnapshot"
+          ]
+          Resource = [
+            "arn:${data.aws_partition.current.partition}:rds:*:${data.aws_caller_identity.current.account_id}:db:*",
+            "arn:${data.aws_partition.current.partition}:rds:*:${data.aws_caller_identity.current.account_id}:cluster:*",
+            "arn:${data.aws_partition.current.partition}:rds:*:${data.aws_caller_identity.current.account_id}:snapshot:*",
+            "arn:${data.aws_partition.current.partition}:rds:*:${data.aws_caller_identity.current.account_id}:cluster-snapshot:*"
+          ]
+          Condition = {
+            StringEquals = {
+              "aws:ResourceTag/UpwindComponent" = "CloudScanner"
+            }
+          }
+        },
+        {
+          # KMS for the re-encryption copy, used by RDS via kms:ViaService.
+          Sid    = "DspmRdsKms"
+          Effect = "Allow"
+          Action = [
+            "kms:DescribeKey",
+            "kms:CreateGrant",
+            "kms:Encrypt",
+            "kms:Decrypt",
+            "kms:ReEncrypt*",
+            "kms:GenerateDataKey*"
+          ]
+          Resource = "*"
+          Condition = {
+            StringLike = {
+              "kms:ViaService" = "rds.*.amazonaws.com"
+            }
+          }
+        },
+        {
+          # Discovery IAM token, scoped to the discovery user (must match UPWIND_DSPM_DB_USER).
+          Sid    = "DspmRdsDbConnect"
+          Effect = "Allow"
+          Action = [
+            "rds-db:connect"
+          ]
+          Resource = "arn:${data.aws_partition.current.partition}:rds-db:*:${data.aws_caller_identity.current.account_id}:dbuser:*/upwind_scanner"
+        }
+      ]
+    }
+  )
+}
+
+resource "aws_iam_policy" "cloudscanner_dspm_rds_vpc_access" {
+  count = local.dspm_rds_enabled && length(module.cloudscanner_admin_role) > 0 ? 1 : 0
+
+  name        = local.cloudscanner_dspm_rds_vpc_access_policy_name
+  description = "VPC networking permissions (elastic network interfaces) for the in-VPC Upwind DSPM RDS scanning lambda."
+
+  policy = jsonencode(
+    {
+      Version = "2012-10-17"
+      Statement = [
+        {
+          Sid    = "DspmRdsExecutorVpcEni"
+          Effect = "Allow"
+          Action = [
+            "ec2:CreateNetworkInterface",
+            "ec2:DescribeNetworkInterfaces",
+            "ec2:DeleteNetworkInterface",
+            "ec2:AssignPrivateIpAddresses",
+            "ec2:UnassignPrivateIpAddresses"
+          ]
+          Resource = "*"
+        }
+      ]
+    }
+  )
+}
+
+# Attach the shared control-plane policy to the execution role (member-side ops via cross-account assume).
+resource "aws_iam_role_policy_attachment" "cloudscanner_execution_role_dspm_rds" {
+  count = local.dspm_rds_enabled && length(module.cloudscanner_execution_role) > 0 ? 1 : 0
+
+  role       = module.cloudscanner_execution_role[0].iam_role.name
+  policy_arn = aws_iam_policy.cloudscanner_dspm_rds[0].arn
+}
+
+# Attach the shared control-plane policy to the administration role (the executor lambda runs as it).
+resource "aws_iam_role_policy_attachment" "cloudscanner_admin_role_dspm_rds" {
+  count = local.dspm_rds_enabled && length(module.cloudscanner_admin_role) > 0 ? 1 : 0
+
+  role       = module.cloudscanner_admin_role[0].iam_role.name
+  policy_arn = aws_iam_policy.cloudscanner_dspm_rds[0].arn
+}
+
+# Attach the VPC ENI policy to the administration role only (only it runs the in-VPC executor lambda).
+resource "aws_iam_role_policy_attachment" "cloudscanner_admin_role_dspm_rds_vpc_access" {
+  count = local.dspm_rds_enabled && length(module.cloudscanner_admin_role) > 0 ? 1 : 0
+
+  role       = module.cloudscanner_admin_role[0].iam_role.name
+  policy_arn = aws_iam_policy.cloudscanner_dspm_rds_vpc_access[0].arn
 }
 
 # Create the CloudScanner secret in the orchestrator account if not using a provided ARN.

@@ -96,6 +96,11 @@ variable "upwind_feature_dspm_enabled" {
   type        = bool
 }
 
+variable "upwind_feature_dspm_rds_enabled" {
+  description = "Enable DSPM scanning of RDS databases. This includes the permissions required to snapshot and restore RDS databases so their contents can be scanned."
+  type        = bool
+}
+
 variable "upwind_cloudscanner_management_enabled" {
   description = "Whether CloudScanner management permissions are enabled. Sets the upwind:aws:HasCSAutomationPermissions discovery tag."
   type        = bool

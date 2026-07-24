@@ -41,6 +41,7 @@ resource "aws_iam_role" "organization_service_role" {
       "upwind:aws:CloudScannerExecutionRoleName"      = var.cloudscanner_execution_role_name
       "upwind:aws:OrchestratorAccountId"              = var.orchestrator_account_id
       "upwind:aws:HasDSPMPermissions"                 = var.upwind_feature_dspm_enabled ? "Yes" : "No"
+      "upwind:aws:HasDSPMRDSPermissions"              = var.upwind_feature_dspm_rds_enabled ? "Yes" : "No"
       "upwind:aws:HasCSAutomationPermissions"         = var.upwind_cloudscanner_management_enabled ? "Yes" : "No"
 
     } : {},

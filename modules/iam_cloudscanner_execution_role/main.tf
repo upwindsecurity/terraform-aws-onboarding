@@ -33,11 +33,13 @@ resource "aws_iam_role" "cloudscanner_execution_role" {
   tags = merge(
     var.custom_tags,
     {
-      "upwind:aws:Component"          = "Onboarding",
-      "upwind:aws:OnboardingType"     = "Org",
-      "upwind:aws:ReleaseVersion"     = local.upwind_version,
-      "upwind:aws:DSPMEnabled"        = var.upwind_feature_dspm_enabled
-      "upwind:aws:DSPMEnabledAccount" = local.dspm_enabled,
+      "upwind:aws:Component"             = "Onboarding",
+      "upwind:aws:OnboardingType"        = "Org",
+      "upwind:aws:ReleaseVersion"        = local.upwind_version,
+      "upwind:aws:DSPMEnabled"           = var.upwind_feature_dspm_enabled
+      "upwind:aws:DSPMEnabledAccount"    = local.dspm_enabled,
+      "upwind:aws:DSPMRDSEnabled"        = var.upwind_feature_dspm_rds_enabled
+      "upwind:aws:DSPMRDSEnabledAccount" = local.dspm_rds_enabled,
     },
   )
 

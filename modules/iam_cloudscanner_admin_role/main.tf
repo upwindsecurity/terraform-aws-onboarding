@@ -694,6 +694,7 @@ resource "aws_iam_role_policy" "cloudscanner_administration_role_cloudscannerupd
           Resource = [
             "arn:${data.aws_partition.current.partition}:lambda:*:${data.aws_caller_identity.current.account_id}:function:upwind-cs-lambda-ucsc-*",
             "arn:${data.aws_partition.current.partition}:lambda:*:${data.aws_caller_identity.current.account_id}:function:upwind-cs-ss-lambda-ucsc-*",
+            "arn:${data.aws_partition.current.partition}:lambda:*:${data.aws_caller_identity.current.account_id}:function:upwind-cs-dspm-rds-executor-ucsc-*"
           ]
         },
         {
