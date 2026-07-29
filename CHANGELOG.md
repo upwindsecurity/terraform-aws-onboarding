@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [4.0.1](https://github.com/upwindsecurity/terraform-aws-onboarding/compare/v4.0.0...v4.0.1) (2026-07-29)
+
+### Bug Fixes
+
+* **AG-0:** add subnet and security-group resources for vpc endpoint creation ([d87f31a](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/d87f31a2c14e8d138b74166531606866d7730e42))
+
 ## [4.0.0](https://github.com/upwindsecurity/terraform-aws-onboarding/compare/v3.0.1...v4.0.0) (2026-07-24)
 
 ### ⚠ BREAKING CHANGES
