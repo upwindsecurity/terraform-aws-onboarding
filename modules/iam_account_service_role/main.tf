@@ -1324,6 +1324,20 @@ resource "aws_iam_policy" "account_service_cloudscanner_access_policy" {
           Resource = "arn:${data.aws_partition.current.partition}:iam::*:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling*"
         },
         {
+          Sid = "CreateCloudScannerDspmRdsSubnetGroup"
+          # DSPM RDS: allow the account service role to create the tagged DB subnet group the CloudScanner
+          # stack provisions for DSPM RDS scan copies. Needed for stack create; mirrors the delete grant below.
+          # AddTagsToResource is required because RDS tags the subnet group at create time.
+          Effect = "Allow"
+          Action = [
+            "rds:CreateDBSubnetGroup",
+            "rds:AddTagsToResource"
+          ]
+          Resource = [
+            "arn:${data.aws_partition.current.partition}:rds:*:${data.aws_caller_identity.current.account_id}:subgrp:*"
+          ]
+        },
+        {
           Sid = "DeleteCloudScannerDspmRdsSubnetGroup"
           # DSPM RDS: allow deletion of the DB subnet group that the CloudScanner stack creates for DSPM RDS
           # scan copies. The account service role drives CloudFormation stack teardown, so it must be able to
