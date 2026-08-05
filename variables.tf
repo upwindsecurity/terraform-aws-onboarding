@@ -251,6 +251,18 @@ variable "upwind_feature_dspm_account_whitelist" {
   default     = []
 }
 
+variable "upwind_feature_dspm_rds_enabled" {
+  description = "Enable DSPM scanning of RDS databases. This includes the permissions required to snapshot and restore RDS databases so their contents can be scanned."
+  type        = bool
+  default     = false
+}
+
+variable "upwind_feature_dspm_rds_account_allowlist" {
+  description = "(Optional). If set, and given upwind_feature_dspm_rds_enabled is true, this limits the accounts that we create the DSPM RDS permissions in."
+  type        = list(string)
+  default     = []
+}
+
 variable "upwind_cloudscanner_management_enabled" {
   description = "Enable the permissions necessary to support automated CloudScanner deployment and management."
   type        = bool

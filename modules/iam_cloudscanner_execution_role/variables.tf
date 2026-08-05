@@ -36,6 +36,17 @@ variable "upwind_feature_dspm_account_whitelist" {
   default     = []
 }
 
+variable "upwind_feature_dspm_rds_enabled" {
+  description = "Enable DSPM scanning of RDS databases. This includes the permissions required to snapshot and restore RDS databases so their contents can be scanned."
+  type        = bool
+}
+
+variable "upwind_feature_dspm_rds_account_allowlist" {
+  description = "(Optional). If set, and given upwind_feature_dspm_rds_enabled is true, this limits the accounts that we create the DSPM RDS permissions in."
+  type        = list(string)
+  default     = []
+}
+
 variable "is_saas_mode" {
   description = "Whether this is a SaaS deployment. When true, the execution role's trust policy trusts the customer assume role instead of the admin role."
   type        = bool

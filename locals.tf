@@ -25,6 +25,10 @@ locals {
   account_service_agentless_k8s_access_entries_policy_name = "${var.account_service_agentless_k8s_access_entries_policy_name}${local.suffix}"
   account_service_agentless_k8s_ssm_policy_name            = "${var.account_service_agentless_k8s_ssm_policy_name}${local.suffix}"
 
+  # Shared DSPM RDS managed-policy names (mirror the CloudFormation v2 ManagedPolicyName values).
+  cloudscanner_dspm_rds_policy_name            = "UpwindCloudScannerDspmRdsPolicy${local.suffix}"
+  cloudscanner_dspm_rds_vpc_access_policy_name = "UpwindCloudScannerDspmRdsVpcAccessPolicy${local.suffix}"
+
   # Condition used to determine if the module is being applied to the management account
   condition_has_management_account_id = !(var.management_account_id == null)
   condition_is_management_account = alltrue([
@@ -42,6 +46,14 @@ locals {
   # SaaS mode conditions
   condition_is_saas_mode                = var.is_saas
   condition_create_customer_assume_role = local.condition_is_saas_mode && local.condition_is_orchestrator_account
+
+  # DSPM RDS scanning enablement (mirrors the execution-role module): the feature flag gated by an optional
+  # per-account allowlist. Drives the shared DSPM RDS managed policy and its role attachments.
+  dspm_rds_account_allowed = (
+    length(var.upwind_feature_dspm_rds_account_allowlist) == 0 ||
+    contains(var.upwind_feature_dspm_rds_account_allowlist, data.aws_caller_identity.current.account_id)
+  )
+  dspm_rds_enabled = var.upwind_feature_dspm_rds_enabled && local.dspm_rds_account_allowed
 
   # Default the SaaS trusted account to the general Upwind trusted account if not explicitly set.
   saas_trusted_account_id = coalesce(var.cloudscanner_saas_trusted_account_id, var.upwind_trusted_account_id)

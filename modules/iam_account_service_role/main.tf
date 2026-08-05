@@ -57,6 +57,7 @@ resource "aws_iam_role" "account_service_role" {
       "upwind:aws:CloudScannerInstallRegion"          = data.aws_region.current.region
       "upwind:aws:CloudScannerSecretARN"              = var.cloudscanner_secret_arn
       "upwind:aws:HasDSPMPermissions"                 = var.upwind_feature_dspm_enabled ? "Yes" : "No"
+      "upwind:aws:HasDSPMRDSPermissions"              = var.upwind_feature_dspm_rds_enabled ? "Yes" : "No"
       "upwind:aws:HasCSAutomationPermissions"         = var.upwind_cloudscanner_management_enabled ? "Yes" : "No"
       "upwind:aws:HasCSEC2NetworkPermissions"         = var.upwind_include_ec2_network_management_permissions ? "Yes" : "No"
     } : {},
@@ -1175,7 +1176,8 @@ resource "aws_iam_policy" "account_service_cloudscanner_access_policy" {
           Resource = [
             "arn:${data.aws_partition.current.partition}:lambda:*:${data.aws_caller_identity.current.account_id}:function:upwind-cs-lambda-ucsc-*",
             "arn:${data.aws_partition.current.partition}:lambda:*:${data.aws_caller_identity.current.account_id}:function:upwind-cs-ss-lambda-ucsc-*",
-            "arn:${data.aws_partition.current.partition}:lambda:*:${data.aws_caller_identity.current.account_id}:function:upwind-cs-updater-ucsc-*"
+            "arn:${data.aws_partition.current.partition}:lambda:*:${data.aws_caller_identity.current.account_id}:function:upwind-cs-updater-ucsc-*",
+            "arn:${data.aws_partition.current.partition}:lambda:*:${data.aws_caller_identity.current.account_id}:function:upwind-cs-dspm-rds-executor-ucsc-*"
           ]
         },
         {
@@ -1322,6 +1324,39 @@ resource "aws_iam_policy" "account_service_cloudscanner_access_policy" {
             "iam:PutRolePolicy"
           ]
           Resource = "arn:${data.aws_partition.current.partition}:iam::*:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling*"
+        },
+        {
+          Sid = "CreateCloudScannerDspmRdsSubnetGroup"
+          # DSPM RDS: allow the account service role to create the tagged DB subnet group the CloudScanner
+          # stack provisions for DSPM RDS scan copies. Needed for stack create; mirrors the delete grant below.
+          # AddTagsToResource is required because RDS tags the subnet group at create time.
+          Effect = "Allow"
+          Action = [
+            "rds:CreateDBSubnetGroup",
+            "rds:AddTagsToResource"
+          ]
+          Resource = [
+            "arn:${data.aws_partition.current.partition}:rds:*:${data.aws_caller_identity.current.account_id}:subgrp:*"
+          ]
+        },
+        {
+          Sid = "DeleteCloudScannerDspmRdsSubnetGroup"
+          # DSPM RDS: allow deletion of the DB subnet group that the CloudScanner stack creates for DSPM RDS
+          # scan copies. The account service role drives CloudFormation stack teardown, so it must be able to
+          # delete this stack-owned resource; without it, scanner-stack deletion fails on the subnet group. The
+          # subnet group is tagged UpwindComponent=CloudScanner by the CloudScanner stack.
+          Effect = "Allow"
+          Action = [
+            "rds:DeleteDBSubnetGroup"
+          ]
+          Resource = [
+            "arn:${data.aws_partition.current.partition}:rds:*:${data.aws_caller_identity.current.account_id}:subgrp:*"
+          ]
+          Condition = {
+            StringEquals = {
+              "aws:ResourceTag/UpwindComponent" = "CloudScanner"
+            }
+          }
         }
       ]
     }
