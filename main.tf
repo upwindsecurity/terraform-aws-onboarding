@@ -126,6 +126,7 @@ module "cloudscanner_execution_role" {
 # restricted to our own tagged resources (aws:ResourceTag).
 # ------------------------------------------------------------------------------------------------
 resource "aws_iam_policy" "cloudscanner_dspm_rds" {
+  # Gated by upwind_feature_dspm_rds_enabled, which defaults to false.
   count = local.dspm_rds_enabled && (length(module.cloudscanner_execution_role) > 0 || length(module.cloudscanner_admin_role) > 0) ? 1 : 0
 
   name        = local.cloudscanner_dspm_rds_policy_name
