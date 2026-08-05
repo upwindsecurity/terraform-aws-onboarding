@@ -1357,6 +1357,40 @@ resource "aws_iam_policy" "account_service_cloudscanner_access_policy" {
               "aws:ResourceTag/UpwindComponent" = "CloudScanner"
             }
           }
+        },
+        {
+          Sid = "DescribeCloudScannerDspmRdsDatabases"
+          # DSPM RDS: allow the account service role to find the scan databases before a stack delete. They are
+          # created by the executor lambda at runtime, so they are not CloudFormation resources: the stack
+          # delete neither removes them nor waits for them, and while they run their network interfaces hold the
+          # stack's DB subnet group, security group, subnets and VPC, so the delete fails. RDS describes take no
+          # resource or tag scoping, and the selector we filter on (the stack's own DB subnet group) is only
+          # readable from the result.
+          Effect = "Allow"
+          Action = [
+            "rds:DescribeDBInstances",
+            "rds:DescribeDBClusters"
+          ]
+          Resource = "*"
+        },
+        {
+          Sid = "DeleteCloudScannerDspmRdsDatabases"
+          # DSPM RDS: allow the account service role to remove those scan databases, restricted to ones the
+          # executor tagged. Mirrors the DspmRdsDeleteOwn grant the CloudScanner roles already carry.
+          Effect = "Allow"
+          Action = [
+            "rds:DeleteDBInstance",
+            "rds:DeleteDBCluster"
+          ]
+          Resource = [
+            "arn:${data.aws_partition.current.partition}:rds:*:${data.aws_caller_identity.current.account_id}:db:*",
+            "arn:${data.aws_partition.current.partition}:rds:*:${data.aws_caller_identity.current.account_id}:cluster:*"
+          ]
+          Condition = {
+            StringEquals = {
+              "aws:ResourceTag/UpwindComponent" = "CloudScanner"
+            }
+          }
         }
       ]
     }
