@@ -1375,18 +1375,20 @@ resource "aws_iam_policy" "account_service_cloudscanner_access_policy" {
         },
         {
           Sid = "DeleteCloudScannerDspmRdsDatabases"
-          # DSPM RDS: allow the account service role to remove those scan databases. Scoped two ways, matching the
-          # ownership test in the teardown code, which requires both: the resource name must carry the prefix the
-          # executor gives every database it creates, and the resource must carry the component tag. A customer
-          # database sitting in the same subnet group satisfies neither.
+          # DSPM RDS: allow the account service role to remove those scan databases, and only those. The name
+          # pattern is the full shape the state machine's ResourceNamer produces,
+          # cloudscanner-dspm-<stage>-<source>-<rowId>, where the row id always carries the ucsds- prefix, so a
+          # database has to be one it created for a specific scan row. The component tag is required on top of
+          # that, mirroring the ownership test in the teardown code, which also requires both. A customer
+          # database sitting in the same subnet group satisfies none of it.
           Effect = "Allow"
           Action = [
             "rds:DeleteDBInstance",
             "rds:DeleteDBCluster"
           ]
           Resource = [
-            "arn:${data.aws_partition.current.partition}:rds:*:${data.aws_caller_identity.current.account_id}:db:cloudscanner-dspm-*",
-            "arn:${data.aws_partition.current.partition}:rds:*:${data.aws_caller_identity.current.account_id}:cluster:cloudscanner-dspm-*"
+            "arn:${data.aws_partition.current.partition}:rds:*:${data.aws_caller_identity.current.account_id}:db:cloudscanner-dspm-*-ucsds-*",
+            "arn:${data.aws_partition.current.partition}:rds:*:${data.aws_caller_identity.current.account_id}:cluster:cloudscanner-dspm-*-ucsds-*"
           ]
           Condition = {
             StringEquals = {
