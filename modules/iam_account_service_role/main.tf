@@ -1390,7 +1390,7 @@ resource "aws_iam_policy" "account_service_cloudscanner_access_policy" {
               }
             }
           }
-        ] : [])
+      ] : [])
     }
   )
 
