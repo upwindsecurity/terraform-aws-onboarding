@@ -1375,16 +1375,18 @@ resource "aws_iam_policy" "account_service_cloudscanner_access_policy" {
         },
         {
           Sid = "DeleteCloudScannerDspmRdsDatabases"
-          # DSPM RDS: allow the account service role to remove those scan databases, restricted to ones the
-          # executor tagged. Mirrors the DspmRdsDeleteOwn grant the CloudScanner roles already carry.
+          # DSPM RDS: allow the account service role to remove those scan databases. Scoped two ways, matching the
+          # ownership test in the teardown code, which requires both: the resource name must carry the prefix the
+          # executor gives every database it creates, and the resource must carry the component tag. A customer
+          # database sitting in the same subnet group satisfies neither.
           Effect = "Allow"
           Action = [
             "rds:DeleteDBInstance",
             "rds:DeleteDBCluster"
           ]
           Resource = [
-            "arn:${data.aws_partition.current.partition}:rds:*:${data.aws_caller_identity.current.account_id}:db:*",
-            "arn:${data.aws_partition.current.partition}:rds:*:${data.aws_caller_identity.current.account_id}:cluster:*"
+            "arn:${data.aws_partition.current.partition}:rds:*:${data.aws_caller_identity.current.account_id}:db:cloudscanner-dspm-*",
+            "arn:${data.aws_partition.current.partition}:rds:*:${data.aws_caller_identity.current.account_id}:cluster:cloudscanner-dspm-*"
           ]
           Condition = {
             StringEquals = {
