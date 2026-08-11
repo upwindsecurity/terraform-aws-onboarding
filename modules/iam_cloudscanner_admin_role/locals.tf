@@ -1,5 +1,5 @@
 locals {
-  upwind_version = "TF-4.1.0"
+  upwind_version = "TF-4.1.1"
 
   # Secret ARNs include a random suffix. We will strip that to use and ARNlike condition that allows the secret to be 
   # updated if necessary
