@@ -1,9 +1,12 @@
 data "aws_partition" "current" {}
+data "aws_caller_identity" "current" {}
 
 resource "aws_iam_role" "organization_service_role" {
 
-  name        = var.org_discovery_role_name
-  description = ""
+  name = var.org_discovery_role_name
+  # Optionally constrain the role with a caller-supplied permissions boundary (null when none was provided).
+  permissions_boundary = local.permissions_boundary_arn
+  description          = ""
   assume_role_policy = jsonencode(
     {
       Version = "2012-10-17"

@@ -23,6 +23,7 @@ module "org_discovery_role" {
   cloudscanner_saas_customer_assume_role_name = local.condition_is_saas_mode ? local.cloudscanner_saas_customer_assume_role_name : null
   upwind_cloudscanner_management_enabled      = var.upwind_cloudscanner_management_enabled
   custom_tags                                 = var.custom_tags
+  permissions_boundary                        = var.organization_role_permissions_boundary
 }
 
 # The Account Service role will be installed in all accounts but for the management account
@@ -74,6 +75,7 @@ module "account_service_role" {
   # SaaS mode tags
   is_saas_mode                                = local.condition_is_saas_mode
   cloudscanner_saas_customer_assume_role_name = local.condition_create_customer_assume_role ? local.cloudscanner_saas_customer_assume_role_name : null
+  permissions_boundary                        = var.account_service_role_permissions_boundary
 }
 
 # Create the CloudScanner admin role. This will be in the orchestrator account.
@@ -88,6 +90,8 @@ module "cloudscanner_admin_role" {
 
   # Set the secret - either to the created secret or the ARN provided
   cloudscanner_secret_arn = local.condition_create_cloudscanner_secret ? one(module.cloudscanner_secret[*]).secret.arn : var.upwind_cloudscanner_auth_secret_arn
+
+  permissions_boundary = var.cloudscanner_administration_role_permissions_boundary
 }
 
 # The CloudScanner execution role should be created in all accounts which are to be scanned. Optionally,
@@ -113,6 +117,7 @@ module "cloudscanner_execution_role" {
   # SaaS mode trust policy
   is_saas_mode                                = local.condition_is_saas_mode
   cloudscanner_saas_customer_assume_role_name = local.cloudscanner_saas_customer_assume_role_name
+  permissions_boundary                        = var.cloudscanner_execution_role_permissions_boundary
 }
 
 # ------------------------------------------------------------------------------------------------
@@ -394,6 +399,7 @@ module "cloudscanner_saas_customer_assume_role" {
   external_id                      = var.external_id
   cloudscanner_execution_role_name = local.cloudscanner_execution_role_name
   custom_tags                      = var.custom_tags
+  permissions_boundary             = var.cloudscanner_saas_customer_assume_role_permissions_boundary
 }
 
 # Using a null resource so that we can avail of the precondition rules to

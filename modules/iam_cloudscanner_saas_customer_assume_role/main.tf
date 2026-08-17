@@ -1,8 +1,11 @@
 data "aws_partition" "current" {}
+data "aws_caller_identity" "current" {}
 
 resource "aws_iam_role" "cloudscanner_saas_customer_assume_role" {
-  name        = var.role_name
-  description = "Grants Upwind Security the necessary permissions to assume the CloudScanner Execution role to perform scanning operations."
+  name = var.role_name
+  # Optionally constrain the role with a caller-supplied permissions boundary (null when none was provided).
+  permissions_boundary = local.permissions_boundary_arn
+  description          = "Grants Upwind Security the necessary permissions to assume the CloudScanner Execution role to perform scanning operations."
 
   assume_role_policy = jsonencode(
     {
