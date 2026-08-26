@@ -350,3 +350,9 @@ variable "cloudscanner_saas_customer_assume_role_name" {
     error_message = "cloudscanner_saas_customer_assume_role_name contains invalid characters."
   }
 }
+
+variable "upwind_enable_self_managed_kms_key" {
+  description = "Enable self managed kms key instead of upwind managed kms key"
+  type        = bool
+  default     = false
+}

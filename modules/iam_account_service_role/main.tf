@@ -60,6 +60,7 @@ resource "aws_iam_role" "account_service_role" {
       "upwind:aws:HasDSPMRDSPermissions"              = var.upwind_feature_dspm_rds_enabled ? "Yes" : "No"
       "upwind:aws:HasCSAutomationPermissions"         = var.upwind_cloudscanner_management_enabled ? "Yes" : "No"
       "upwind:aws:HasCSEC2NetworkPermissions"         = var.upwind_include_ec2_network_management_permissions ? "Yes" : "No"
+      "upwind:aws:HasSelfManagedKMSKey"               = var.upwind_enable_self_managed_kms_key ? "Yes" : "No"
     } : {},
     # In SaaS mode, tag the account service role with the customer assume role name for discovery.
     var.cloudscanner_saas_customer_assume_role_name != null ? {
@@ -1033,331 +1034,339 @@ resource "aws_iam_policy" "account_service_cloudscanner_access_policy" {
   policy = jsonencode(
     {
       Version = "2012-10-17"
-      Statement = concat([
-        {
-          Sid = "RestrictedKMSCreateKey"
-          # Permissions that allow the CloudScanner to create KMS keys.
-          # This is a restricted list which does not adhere to the recommendations in
-          # https://repost.aws/knowledge-center/update-key-policy-future as these introduce a significant number of roles. Instead the KMS
-          # create should be created with the BypassPolicyLockoutSafetyCheck option and can have a policy with a reduced set of the roles.
-          # Key creation/delete will be constrained to expect a specific tag which must also be added the KMS key when creating it.
-          # See https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html for more details
+      Statement = concat(
+        # Toggle for KMS permissions
+        # These will be ommited in the case the user wants
+        # To bring their own kms key
+        [
+          for s in
+          [
+            {
+              Sid = "RestrictedKMSCreateKey"
+              # Permissions that allow the CloudScanner to create KMS keys.
+              # This is a restricted list which does not adhere to the recommendations in
+              # https://repost.aws/knowledge-center/update-key-policy-future as these introduce a significant number of roles. Instead the KMS
+              # create should be created with the BypassPolicyLockoutSafetyCheck option and can have a policy with a reduced set of the roles.
+              # Key creation/delete will be constrained to expect a specific tag which must also be added the KMS key when creating it.
+              # See https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html for more details
 
-          Effect = "Allow"
-          Action = [
-            "kms:CreateKey",
-            "kms:TagResource"
-          ]
-          Resource = [
-            # CreateKey is rejected on any resource other than *.
-            "*"
-          ]
-          Condition = {
-            StringEquals = {
-              "kms:CallerAccount"              = data.aws_caller_identity.current.account_id
-              "kms:KeyUsage"                   = "ENCRYPT_DECRYPT"
-              "kms:KeySpec"                    = "SYMMETRIC_DEFAULT"
-              "aws:RequestTag/UpwindComponent" = "CloudScanner"
-            }
-          }
-        },
-        {
-          Sid = "ModifyTagsOnCloudScannerKMSKey"
-          # Policy that allows tags to be added/removed from the CloudScanner KMS keys.
-          Effect = "Allow"
-          Action = [
-            "kms:TagResource",
-            "kms:UntagResource"
-          ]
-          Resource = [
-            "arn:${data.aws_partition.current.partition}:kms:*:${data.aws_caller_identity.current.account_id}:key/*"
-          ]
-          Condition = {
-            StringEquals = {
-              "aws:ResourceTag/UpwindComponent" : "CloudScanner"
-            }
-          }
-        },
-        {
-          Sid = "RestrictedKMSUpdateKey"
-          # Restrict Update key operations so that only the policy and descriptions can be updated.
-          Effect = "Allow"
-          Action = [
-            "kms:UpdateKeyDescription",
-            "kms:PutKeyPolicy"
-          ]
-          Resource = [
-            "arn:${data.aws_partition.current.partition}:kms:*:${data.aws_caller_identity.current.account_id}:key/*"
-          ]
-          Condition = {
-            StringEquals = {
-              "aws:ResourceTag/UpwindComponent" = "CloudScanner"
-            }
-          }
-        },
-        {
-          Sid = "RestrictedKMSDelete"
-          # Restrict KMS delete operations to only tagged keys.
-          Effect = "Allow"
-          Action = [
-            "kms:ScheduleKeyDeletion"
-          ]
-          Resource = [
-            "arn:${data.aws_partition.current.partition}:kms:*:${data.aws_caller_identity.current.account_id}:key/*"
-          ]
-          Condition = {
-            StringEquals = {
-              "kms:CallerAccount"               = data.aws_caller_identity.current.account_id
-              "kms:KeyUsage"                    = "ENCRYPT_DECRYPT"
-              "kms:KeySpec"                     = "SYMMETRIC_DEFAULT"
-              "aws:ResourceTag/UpwindComponent" = "CloudScanner"
-            }
-          }
-        },
-        {
-          Sid = "RestrictedKMSAliases"
-          # There does not appear to be a way to restrict alias creation/deletion to keys with specific tags.
-          # as a result we restricting the permissions to create resources in this account is the next best thing.
-          # The key ids are auto generated, but the alias can have a definable prefix
-          Effect = "Allow"
-          Action = [
-            "kms:CreateAlias",
-            "kms:DeleteAlias"
-          ]
-          Resource = [
-            "arn:${data.aws_partition.current.partition}:kms:*:${data.aws_caller_identity.current.account_id}:alias/csca-key-*",
-            "arn:${data.aws_partition.current.partition}:kms:*:${data.aws_caller_identity.current.account_id}:key/*"
-          ]
-        },
-        {
-          Sid = "AccessLogs"
-          # Permissions to manage CloudWatch logs for monitoring and logging.
-          Effect = "Allow"
-          Action = [
-            "logs:CreateLogGroup",
-            "logs:CreateLogStream",
-            "logs:DeleteLogGroup",
-            "logs:Describe*",
-            "logs:GetLogEvents",
-            "logs:PutLogEvents",
-            "logs:PutRetentionPolicy",
-            "logs:TagResource",
-            "logs:UntagResource"
-          ]
-          # Grant permissions to only create logs with the following paths. The full log group names are not known when
-          # when creating the log groups.
-          Resource = [
-            "arn:${data.aws_partition.current.partition}:logs:*:${data.aws_caller_identity.current.account_id}:log-group:/aws/ec2/system-logs/upwind-cs-ucsc-*",
-            "arn:${data.aws_partition.current.partition}:logs:*:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/upwind-cs-lambda-ucsc-*"
-          ]
-        },
-        {
-          Sid = "ManageUpwindLambdas"
-          # Permissions to manage the Lambda function for the CloudScanners. The full function names are not known when
-          # defining the roles.
-          # The roles which can be used in lambda:AddPermission and lambda:RemovePermission are implicitly limited by the roles
-          # permitted by the PassRole policy - AccessIAMPassCloudscannerRole.
-          Effect = "Allow"
-          Action = [
-            "lambda:CreateAlias",
-            "lambda:CreateFunction",
-            "lambda:DeleteAlias",
-            "lambda:DeleteFunction",
-            "lambda:GetFunction",
-            "lambda:InvokeFunction",
-            "lambda:List*",
-            "lambda:TagResource",
-            "lambda:UpdateFunctionConfiguration",
-            "lambda:UpdateFunctionCode",
-            "lambda:UntagResource",
-            "lambda:AddPermission",
-            "lambda:RemovePermission"
-          ]
-          Resource = [
-            "arn:${data.aws_partition.current.partition}:lambda:*:${data.aws_caller_identity.current.account_id}:function:upwind-cs-lambda-ucsc-*",
-            "arn:${data.aws_partition.current.partition}:lambda:*:${data.aws_caller_identity.current.account_id}:function:upwind-cs-ss-lambda-ucsc-*",
-            "arn:${data.aws_partition.current.partition}:lambda:*:${data.aws_caller_identity.current.account_id}:function:upwind-cs-updater-ucsc-*",
-            "arn:${data.aws_partition.current.partition}:lambda:*:${data.aws_caller_identity.current.account_id}:function:upwind-cs-dspm-rds-executor-ucsc-*"
-          ]
-        },
-        {
-          Sid = "CloudScannerLambdaRulesTags"
-          # Permissions required to tag Event / Lambda trigger rules
-          Effect = "Allow"
-          Action = [
-            "events:TagResource",
-            "events:UntagResource"
-          ]
-          Resource = [
-            "arn:${data.aws_partition.current.partition}:events:*:${data.aws_caller_identity.current.account_id}:rule/CloudScanner*",
-            "arn:${data.aws_partition.current.partition}:events:*:${data.aws_caller_identity.current.account_id}:rule/upwind-cloud-scanner-ucsc-CloudScanner*"
-          ]
-          Condition = {
-            StringEquals = {
-              "aws:RequestTag/UpwindComponent" = "CloudScanner"
-            }
-          }
-        },
-        {
-          Sid = "CloudScannerLambdaRulesModifyTags"
-          # Permissions required to modify tags post creation
-          Effect = "Allow"
-          Action = [
-            "events:TagResource",
-            "events:UntagResource"
-          ]
-          Resource = [
-            "arn:${data.aws_partition.current.partition}:events:*:${data.aws_caller_identity.current.account_id}:rule/CloudScanner*",
-            "arn:${data.aws_partition.current.partition}:events:*:${data.aws_caller_identity.current.account_id}:rule/upwind-cloud-scanner-ucsc-CloudScanner*"
-          ]
-          Condition = {
-            StringEquals = {
-              "aws:ResourceTag/UpwindComponent" = "CloudScanner"
-            }
-          }
-        },
-        {
-          Sid = "AccessUpwindS3ServerlessBucket",
-          # This policy goes hand in hand with the policy above and helps limits the source for the Lambdas to the
-          # Upwind publishing bucket.
-          Effect = "Allow",
-          Action = [
-            "s3:GetObject"
-          ],
-          Resource = [
-            "arn:${data.aws_partition.current.partition}:s3:::upwind-serverless-functions-*/integrations/cloudscanner/*"
-          ],
-          Condition = {
-            StringEquals = {
-              "aws:ResourceAccount" : "693339160499"
+              Effect = "Allow"
+              Action = [
+                "kms:CreateKey",
+                "kms:TagResource"
+              ]
+              Resource = [
+                # CreateKey is rejected on any resource other than *.
+                "*"
+              ]
+              Condition = {
+                StringEquals = {
+                  "kms:CallerAccount"              = data.aws_caller_identity.current.account_id
+                  "kms:KeyUsage"                   = "ENCRYPT_DECRYPT"
+                  "kms:KeySpec"                    = "SYMMETRIC_DEFAULT"
+                  "aws:RequestTag/UpwindComponent" = "CloudScanner"
+                }
+              }
             },
-            "ForAnyValue:StringEquals" = {
-              "aws:CalledVia" : "cloudformation.amazonaws.com"
-            }
-          }
-        },
-        {
-          Sid = "AccessCloudWatchEvents"
-          # Permissions to manage CloudWatch Events.
-          Effect = "Allow"
-          Action = [
-            "events:DescribeRule",
-            "events:PutRule",
-            "events:PutTargets",
-            "events:EnableRule",
-            "events:DisableRule",
-            "events:DeleteRule",
-            "events:RemoveTargets"
-          ]
-          Resource = "*"
-        },
-        {
-          Sid = "AccessIAMInstanceProfile"
-          # The following IAM permissions are required to allow management of an IAM Instance Profile, which will be created when installing the CloudScanner
-          # CloudFormation stack. The Instance Profile is used to grant (or pass) the CloudScanner Admin role through to the VMs running in the AutoScaling Group,
-          # allowing them to function using that role. Unfortunately the conditions which can be applied to these actions are limited, see :-
-          # https://docs.aws.amazon.com/service-authorization/latest/reference/list_awsidentityandaccessmanagementiam.html#awsidentityandaccessmanagementiam-instance-profile
-          # The actions defined here grant permissions to create the policy. The roles that can be attached to this policy are limited by using iam:PassRole action which
-          # is limited to the CloudScanner Admin role. By default, it is only possible to attache a single role to an IAM Instance Policy, and when performing iam:PassRole
-          # actions, the role being pass must match that defined in the Instance Policy.
-          Effect = "Allow"
-          Action = [
-            "iam:AddRoleToInstanceProfile",
-            "iam:CreateInstanceProfile",
-            "iam:DeleteInstanceProfile",
-            "iam:GetInstanceProfile",
-            "iam:RemoveRoleFromInstanceProfile"
-          ]
-          Resource = [
-            # An IAM Instance Policy will be created when provisioning the CloudScanner. It will be created in the orchestrator account similar to the following.
-            "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:instance-profile/upwind-cs-pr-ucsc-*"
-          ]
-        },
-        {
-          Sid = "AccessIAMPassCloudscannerRole"
-          # Permissions to pass the CloudScanner Admin role to the necessary resources and services
-          # The Account Service role can be used to update the CloudScanner stack configuration. This includes applying configuration
-          # changes to the ASG and launch templates. In order to do so, the role needs to pass the CloudScanner Admin role to the
-          # necessary services.
-          # This is effectively delegating permissions to the AWS services (Auto Scaling Group and EC2 services) to perform the
-          # actions on the resources on our behalf
-          # The role here must match the role configured in the instance policy associated with the ASG, otherwise it does not
-          # appear to be assumed.
-          Effect = "Allow"
-          Action = [
-            "iam:PassRole"
-          ]
-          Resource = "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:role/${var.cloudscanner_admin_role_name}"
-          Condition = {
-            StringEquals = {
-              "iam:PassedToService" = [
-                "ec2.amazonaws.com",
-                "lambda.amazonaws.com"
+            {
+              Sid = "ModifyTagsOnCloudScannerKMSKey"
+              # Policy that allows tags to be added/removed from the CloudScanner KMS keys.
+              Effect = "Allow"
+              Action = [
+                "kms:TagResource",
+                "kms:UntagResource"
+              ]
+              Resource = [
+                "arn:${data.aws_partition.current.partition}:kms:*:${data.aws_caller_identity.current.account_id}:key/*"
+              ]
+              Condition = {
+                StringEquals = {
+                  "aws:ResourceTag/UpwindComponent" : "CloudScanner"
+                }
+              }
+            },
+            {
+              Sid = "RestrictedKMSUpdateKey"
+              # Restrict Update key operations so that only the policy and descriptions can be updated.
+              Effect = "Allow"
+              Action = [
+                "kms:UpdateKeyDescription",
+                "kms:PutKeyPolicy"
+              ]
+              Resource = [
+                "arn:${data.aws_partition.current.partition}:kms:*:${data.aws_caller_identity.current.account_id}:key/*"
+              ]
+              Condition = {
+                StringEquals = {
+                  "aws:ResourceTag/UpwindComponent" = "CloudScanner"
+                }
+              }
+            },
+            {
+              Sid = "RestrictedKMSDelete"
+              # Restrict KMS delete operations to only tagged keys.
+              Effect = "Allow"
+              Action = [
+                "kms:ScheduleKeyDeletion"
+              ]
+              Resource = [
+                "arn:${data.aws_partition.current.partition}:kms:*:${data.aws_caller_identity.current.account_id}:key/*"
+              ]
+              Condition = {
+                StringEquals = {
+                  "kms:CallerAccount"               = data.aws_caller_identity.current.account_id
+                  "kms:KeyUsage"                    = "ENCRYPT_DECRYPT"
+                  "kms:KeySpec"                     = "SYMMETRIC_DEFAULT"
+                  "aws:ResourceTag/UpwindComponent" = "CloudScanner"
+                }
+              }
+            },
+            {
+              Sid = "RestrictedKMSAliases"
+              # There does not appear to be a way to restrict alias creation/deletion to keys with specific tags.
+              # as a result we restricting the permissions to create resources in this account is the next best thing.
+              # The key ids are auto generated, but the alias can have a definable prefix
+              Effect = "Allow"
+              Action = [
+                "kms:CreateAlias",
+                "kms:DeleteAlias"
+              ]
+              Resource = [
+                "arn:${data.aws_partition.current.partition}:kms:*:${data.aws_caller_identity.current.account_id}:alias/csca-key-*",
+                "arn:${data.aws_partition.current.partition}:kms:*:${data.aws_caller_identity.current.account_id}:key/*"
               ]
             }
-          }
-        },
-        {
-          Sid = "AutoscalingServiceLinkedRoleCreatePolicy"
-          # Permission to allow the creation of the AWSServiceRoleForAutoScaling role which
-          # AWS may need to create automatically when creating the fist ASG if the role does not
-          # already exist.
-          Effect = "Allow"
-          Action = [
-            "iam:CreateServiceLinkedRole"
-          ]
-          Resource = [
-            "arn:${data.aws_partition.current.partition}:iam::*:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling*"
-          ]
-          Condition = {
-            StringLike = {
-              "iam:AWSServiceName" = "autoscaling.amazonaws.com"
+        ] : s if var.upwind_enable_self_managed_kms_key],
+        [
+          {
+            Sid = "AccessLogs"
+            # Permissions to manage CloudWatch logs for monitoring and logging.
+            Effect = "Allow"
+            Action = [
+              "logs:CreateLogGroup",
+              "logs:CreateLogStream",
+              "logs:DeleteLogGroup",
+              "logs:Describe*",
+              "logs:GetLogEvents",
+              "logs:PutLogEvents",
+              "logs:PutRetentionPolicy",
+              "logs:TagResource",
+              "logs:UntagResource"
+            ]
+            # Grant permissions to only create logs with the following paths. The full log group names are not known when
+            # when creating the log groups.
+            Resource = [
+              "arn:${data.aws_partition.current.partition}:logs:*:${data.aws_caller_identity.current.account_id}:log-group:/aws/ec2/system-logs/upwind-cs-ucsc-*",
+              "arn:${data.aws_partition.current.partition}:logs:*:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/upwind-cs-lambda-ucsc-*"
+            ]
+          },
+          {
+            Sid = "ManageUpwindLambdas"
+            # Permissions to manage the Lambda function for the CloudScanners. The full function names are not known when
+            # defining the roles.
+            # The roles which can be used in lambda:AddPermission and lambda:RemovePermission are implicitly limited by the roles
+            # permitted by the PassRole policy - AccessIAMPassCloudscannerRole.
+            Effect = "Allow"
+            Action = [
+              "lambda:CreateAlias",
+              "lambda:CreateFunction",
+              "lambda:DeleteAlias",
+              "lambda:DeleteFunction",
+              "lambda:GetFunction",
+              "lambda:InvokeFunction",
+              "lambda:List*",
+              "lambda:TagResource",
+              "lambda:UpdateFunctionConfiguration",
+              "lambda:UpdateFunctionCode",
+              "lambda:UntagResource",
+              "lambda:AddPermission",
+              "lambda:RemovePermission"
+            ]
+            Resource = [
+              "arn:${data.aws_partition.current.partition}:lambda:*:${data.aws_caller_identity.current.account_id}:function:upwind-cs-lambda-ucsc-*",
+              "arn:${data.aws_partition.current.partition}:lambda:*:${data.aws_caller_identity.current.account_id}:function:upwind-cs-ss-lambda-ucsc-*",
+              "arn:${data.aws_partition.current.partition}:lambda:*:${data.aws_caller_identity.current.account_id}:function:upwind-cs-updater-ucsc-*",
+              "arn:${data.aws_partition.current.partition}:lambda:*:${data.aws_caller_identity.current.account_id}:function:upwind-cs-dspm-rds-executor-ucsc-*"
+            ]
+          },
+          {
+            Sid = "CloudScannerLambdaRulesTags"
+            # Permissions required to tag Event / Lambda trigger rules
+            Effect = "Allow"
+            Action = [
+              "events:TagResource",
+              "events:UntagResource"
+            ]
+            Resource = [
+              "arn:${data.aws_partition.current.partition}:events:*:${data.aws_caller_identity.current.account_id}:rule/CloudScanner*",
+              "arn:${data.aws_partition.current.partition}:events:*:${data.aws_caller_identity.current.account_id}:rule/upwind-cloud-scanner-ucsc-CloudScanner*"
+            ]
+            Condition = {
+              StringEquals = {
+                "aws:RequestTag/UpwindComponent" = "CloudScanner"
+              }
+            }
+          },
+          {
+            Sid = "CloudScannerLambdaRulesModifyTags"
+            # Permissions required to modify tags post creation
+            Effect = "Allow"
+            Action = [
+              "events:TagResource",
+              "events:UntagResource"
+            ]
+            Resource = [
+              "arn:${data.aws_partition.current.partition}:events:*:${data.aws_caller_identity.current.account_id}:rule/CloudScanner*",
+              "arn:${data.aws_partition.current.partition}:events:*:${data.aws_caller_identity.current.account_id}:rule/upwind-cloud-scanner-ucsc-CloudScanner*"
+            ]
+            Condition = {
+              StringEquals = {
+                "aws:ResourceTag/UpwindComponent" = "CloudScanner"
+              }
+            }
+          },
+          {
+            Sid = "AccessUpwindS3ServerlessBucket",
+            # This policy goes hand in hand with the policy above and helps limits the source for the Lambdas to the
+            # Upwind publishing bucket.
+            Effect = "Allow",
+            Action = [
+              "s3:GetObject"
+            ],
+            Resource = [
+              "arn:${data.aws_partition.current.partition}:s3:::upwind-serverless-functions-*/integrations/cloudscanner/*"
+            ],
+            Condition = {
+              StringEquals = {
+                "aws:ResourceAccount" : "693339160499"
+              },
+              "ForAnyValue:StringEquals" = {
+                "aws:CalledVia" : "cloudformation.amazonaws.com"
+              }
+            }
+          },
+          {
+            Sid = "AccessCloudWatchEvents"
+            # Permissions to manage CloudWatch Events.
+            Effect = "Allow"
+            Action = [
+              "events:DescribeRule",
+              "events:PutRule",
+              "events:PutTargets",
+              "events:EnableRule",
+              "events:DisableRule",
+              "events:DeleteRule",
+              "events:RemoveTargets"
+            ]
+            Resource = "*"
+          },
+          {
+            Sid = "AccessIAMInstanceProfile"
+            # The following IAM permissions are required to allow management of an IAM Instance Profile, which will be created when installing the CloudScanner
+            # CloudFormation stack. The Instance Profile is used to grant (or pass) the CloudScanner Admin role through to the VMs running in the AutoScaling Group,
+            # allowing them to function using that role. Unfortunately the conditions which can be applied to these actions are limited, see :-
+            # https://docs.aws.amazon.com/service-authorization/latest/reference/list_awsidentityandaccessmanagementiam.html#awsidentityandaccessmanagementiam-instance-profile
+            # The actions defined here grant permissions to create the policy. The roles that can be attached to this policy are limited by using iam:PassRole action which
+            # is limited to the CloudScanner Admin role. By default, it is only possible to attache a single role to an IAM Instance Policy, and when performing iam:PassRole
+            # actions, the role being pass must match that defined in the Instance Policy.
+            Effect = "Allow"
+            Action = [
+              "iam:AddRoleToInstanceProfile",
+              "iam:CreateInstanceProfile",
+              "iam:DeleteInstanceProfile",
+              "iam:GetInstanceProfile",
+              "iam:RemoveRoleFromInstanceProfile"
+            ]
+            Resource = [
+              # An IAM Instance Policy will be created when provisioning the CloudScanner. It will be created in the orchestrator account similar to the following.
+              "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:instance-profile/upwind-cs-pr-ucsc-*"
+            ]
+          },
+          {
+            Sid = "AccessIAMPassCloudscannerRole"
+            # Permissions to pass the CloudScanner Admin role to the necessary resources and services
+            # The Account Service role can be used to update the CloudScanner stack configuration. This includes applying configuration
+            # changes to the ASG and launch templates. In order to do so, the role needs to pass the CloudScanner Admin role to the
+            # necessary services.
+            # This is effectively delegating permissions to the AWS services (Auto Scaling Group and EC2 services) to perform the
+            # actions on the resources on our behalf
+            # The role here must match the role configured in the instance policy associated with the ASG, otherwise it does not
+            # appear to be assumed.
+            Effect = "Allow"
+            Action = [
+              "iam:PassRole"
+            ]
+            Resource = "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:role/${var.cloudscanner_admin_role_name}"
+            Condition = {
+              StringEquals = {
+                "iam:PassedToService" = [
+                  "ec2.amazonaws.com",
+                  "lambda.amazonaws.com"
+                ]
+              }
+            }
+          },
+          {
+            Sid = "AutoscalingServiceLinkedRoleCreatePolicy"
+            # Permission to allow the creation of the AWSServiceRoleForAutoScaling role which
+            # AWS may need to create automatically when creating the fist ASG if the role does not
+            # already exist.
+            Effect = "Allow"
+            Action = [
+              "iam:CreateServiceLinkedRole"
+            ]
+            Resource = [
+              "arn:${data.aws_partition.current.partition}:iam::*:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling*"
+            ]
+            Condition = {
+              StringLike = {
+                "iam:AWSServiceName" = "autoscaling.amazonaws.com"
+              }
+            }
+          },
+          {
+            Sid = "AutoscalingServiceLinkedRoleUsagePolicy"
+            # Permission to allow the AWSServiceRoleForAutoScaling role to be attached as required.
+            Effect = "Allow"
+            Action = [
+              "iam:AttachRolePolicy",
+              "iam:PutRolePolicy"
+            ]
+            Resource = "arn:${data.aws_partition.current.partition}:iam::*:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling*"
+          },
+          {
+            Sid = "CreateCloudScannerDspmRdsSubnetGroup"
+            # DSPM RDS: allow the account service role to create the tagged DB subnet group the CloudScanner
+            # stack provisions for DSPM RDS scan copies. Needed for stack create; mirrors the delete grant below.
+            # AddTagsToResource is required because RDS tags the subnet group at create time.
+            Effect = "Allow"
+            Action = [
+              "rds:CreateDBSubnetGroup",
+              "rds:AddTagsToResource"
+            ]
+            Resource = [
+              "arn:${data.aws_partition.current.partition}:rds:*:${data.aws_caller_identity.current.account_id}:subgrp:*"
+            ]
+          },
+          {
+            Sid = "DeleteCloudScannerDspmRdsSubnetGroup"
+            # DSPM RDS: allow deletion of the DB subnet group that the CloudScanner stack creates for DSPM RDS
+            # scan copies. The account service role drives CloudFormation stack teardown, so it must be able to
+            # delete this stack-owned resource; without it, scanner-stack deletion fails on the subnet group. The
+            # subnet group is tagged UpwindComponent=CloudScanner by the CloudScanner stack.
+            Effect = "Allow"
+            Action = [
+              "rds:DeleteDBSubnetGroup"
+            ]
+            Resource = [
+              "arn:${data.aws_partition.current.partition}:rds:*:${data.aws_caller_identity.current.account_id}:subgrp:*"
+            ]
+            Condition = {
+              StringEquals = {
+                "aws:ResourceTag/UpwindComponent" = "CloudScanner"
+              }
             }
           }
-        },
-        {
-          Sid = "AutoscalingServiceLinkedRoleUsagePolicy"
-          # Permission to allow the AWSServiceRoleForAutoScaling role to be attached as required.
-          Effect = "Allow"
-          Action = [
-            "iam:AttachRolePolicy",
-            "iam:PutRolePolicy"
-          ]
-          Resource = "arn:${data.aws_partition.current.partition}:iam::*:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling*"
-        },
-        {
-          Sid = "CreateCloudScannerDspmRdsSubnetGroup"
-          # DSPM RDS: allow the account service role to create the tagged DB subnet group the CloudScanner
-          # stack provisions for DSPM RDS scan copies. Needed for stack create; mirrors the delete grant below.
-          # AddTagsToResource is required because RDS tags the subnet group at create time.
-          Effect = "Allow"
-          Action = [
-            "rds:CreateDBSubnetGroup",
-            "rds:AddTagsToResource"
-          ]
-          Resource = [
-            "arn:${data.aws_partition.current.partition}:rds:*:${data.aws_caller_identity.current.account_id}:subgrp:*"
-          ]
-        },
-        {
-          Sid = "DeleteCloudScannerDspmRdsSubnetGroup"
-          # DSPM RDS: allow deletion of the DB subnet group that the CloudScanner stack creates for DSPM RDS
-          # scan copies. The account service role drives CloudFormation stack teardown, so it must be able to
-          # delete this stack-owned resource; without it, scanner-stack deletion fails on the subnet group. The
-          # subnet group is tagged UpwindComponent=CloudScanner by the CloudScanner stack.
-          Effect = "Allow"
-          Action = [
-            "rds:DeleteDBSubnetGroup"
-          ]
-          Resource = [
-            "arn:${data.aws_partition.current.partition}:rds:*:${data.aws_caller_identity.current.account_id}:subgrp:*"
-          ]
-          Condition = {
-            StringEquals = {
-              "aws:ResourceTag/UpwindComponent" = "CloudScanner"
-            }
-          }
-        }
         ],
         # DSPM RDS: allow the account service role to remove the scan databases, and only those. They are
         # created by the executor lambda at runtime, so they are not CloudFormation resources: the stack delete
