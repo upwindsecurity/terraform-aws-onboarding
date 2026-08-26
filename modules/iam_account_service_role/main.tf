@@ -1136,7 +1136,7 @@ resource "aws_iam_policy" "account_service_cloudscanner_access_policy" {
                 "arn:${data.aws_partition.current.partition}:kms:*:${data.aws_caller_identity.current.account_id}:key/*"
               ]
             }
-        ] : s if var.upwind_enable_self_managed_kms_key],
+        ] : s if !var.upwind_enable_self_managed_kms_key],
         [
           {
             Sid = "AccessLogs"
