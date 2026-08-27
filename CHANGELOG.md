@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [4.2.0](https://github.com/upwindsecurity/terraform-aws-onboarding/compare/v4.1.2...v4.2.0) (2026-08-27)
+
+### Features
+
+* **UP-6200:** add support for self-managed KMS key configuration ([5167e71](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/5167e718d2a82aa573d3642d17cc51c6703973d9))
+
+### Bug Fixes
+
+* correct condition for self-managed KMS key access in IAM policy ([79ededa](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/79ededa86cff64439d66366eed12f397ad160249))
+
 ## [4.1.1](https://github.com/upwindsecurity/terraform-aws-onboarding/compare/v4.1.0...v4.1.1) (2026-08-11)
 
 ### Bug Fixes
