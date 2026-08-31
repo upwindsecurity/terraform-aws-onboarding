@@ -274,7 +274,7 @@ resource "aws_iam_role_policy" "cloudscanner_administration_role_cloudscannerope
           ]
           Resource = "*"
           Condition = {
-            StringEquals = {
+            StringLike = {
               "autoscaling:ResourceTag/Name" = "upwind-cs-asg-*"
             }
           }
