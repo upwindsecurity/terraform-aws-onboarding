@@ -126,7 +126,7 @@ resource "aws_iam_role_policy" "cloudscanner_execution_role_cloudscanner_access_
           ]
           Resource = [
             "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:volume/*",
-            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:instance/*]"
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:instance/*"
           ]
         },
         {
