@@ -148,6 +148,7 @@
       {
         "assets": [
           "CHANGELOG.md",
+          "locals.tf",
           "modules/**/version.tf",
           "modules/**/locals.tf"
         ],
