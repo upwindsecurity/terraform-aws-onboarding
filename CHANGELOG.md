@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [4.2.1](https://github.com/upwindsecurity/terraform-aws-onboarding/compare/v4.2.0...v4.2.1) (2026-09-01)
+
+### Bug Fixes
+
+* **UP-6302:** fix typo in cloudscanner execution role module ([27ec097](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/27ec097d34fa4c10d664f4e7d96fc5fdb6e25824))
+
 ## [4.2.0](https://github.com/upwindsecurity/terraform-aws-onboarding/compare/v4.1.2...v4.2.0) (2026-08-27)
 
 ### Features
