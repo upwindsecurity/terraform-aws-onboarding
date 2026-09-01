@@ -89,7 +89,7 @@ resource "aws_iam_role_policy" "cloudscanner_administration_role_cloudscannerope
           ]
           Resource = [
             "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:volume/*",
-            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:instance/*]"
+            "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:instance/*"
           ]
         },
         {
@@ -179,7 +179,7 @@ resource "aws_iam_role_policy" "cloudscanner_administration_role_cloudscannerope
               "ec2:CreateAction" = [
                 "CreateSnapshot",
                 "CreateSnapshots",
-                "CopySnapshots",
+                "CopySnapshot",
                 "CreateVolume"
               ]
             }
