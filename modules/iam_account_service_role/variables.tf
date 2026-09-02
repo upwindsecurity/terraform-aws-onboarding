@@ -265,3 +265,9 @@ ARN is formed for this account. Leave null to create the role without a permissi
   type        = string
   default     = null
 }
+
+variable "upwind_enable_self_managed_kms_key" {
+  description = "Enable self managed kms key instead of upwind managed kms key"
+  type        = bool
+  default     = false
+}

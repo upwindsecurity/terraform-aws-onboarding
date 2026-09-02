@@ -136,16 +136,20 @@ provider "aws" {
 }
 
 module "upwind_aws_org_onboarding" {
-  source = "https://get.upwind.io/terraform/modules/aws-org-onboarding/aws-org-onboarding-X.Y.Z.tar.gz"
+  source = "upwindsecurity/onboarding/aws"
+  # Get versions from https://registry.terraform.io/modules/upwindsecurity/onboarding/aws/latest
+  # The root-module source exists from 4.0.0 onwards; earlier versions used
+  # the //modules/aws-org-onboarding (3.x) or //modules/main/aws-org-onboarding
+  # (2.x) submodule paths.
+  version = "~> 4.0"
 
-  external_id = "F083B753-06B5-40B2-BE41-4035D6A7B6C7"
-
-  orchestrator_account_id             = "123456789012"
+  external_id                         = "F083B753-06B5-40B2-BE41-4035D6A7B6C7"
   management_account_id               = "098765432109"
   install_roles_in_management_account = true
+  role_name_suffix                    = "otmgax1m"
 
-  role_name_suffix = "otmgax1m"
-
+  # optional. for cloudscanner installation only
+  orchestrator_account_id               = "123456789012"
   upwind_cloudscanner_auth_client_id    = "<<cloudscanner-client-id>>"
   upwind_cloudscanner_auth_secret_value = "<<cloudscanner-client-secret>>"
 }
@@ -277,7 +281,6 @@ output "discovery_arn" {
 | <a name="input_cloudscanner_execution_role_name"></a> [cloudscanner\_execution\_role\_name](#input\_cloudscanner\_execution\_role\_name) | The base name of the IAM execution role to be created, used for cloud scanning operations. | `string` | `"UpwindCloudScannerExecutionRole"` | no |
 | <a name="input_cloudscanner_execution_role_permissions_boundary"></a> [cloudscanner\_execution\_role\_permissions\_boundary](#input\_cloudscanner\_execution\_role\_permissions\_boundary) | (Optional). Permissions boundary policy (ARN or policy name/path) to attach to the CloudScanner execution role. | `string` | `null` | no |
 | <a name="input_cloudscanner_saas_customer_assume_role_name"></a> [cloudscanner\_saas\_customer\_assume\_role\_name](#input\_cloudscanner\_saas\_customer\_assume\_role\_name) | Base name of the IAM role created in the orchestrator account that the Upwind SaaS account assumes to perform scanning. Only used when is\_saas = true. | `string` | `"UpwindCloudScannerCustomerAssumeRole"` | no |
-| <a name="input_cloudscanner_saas_customer_assume_role_permissions_boundary"></a> [cloudscanner\_saas\_customer\_assume\_role\_permissions\_boundary](#input\_cloudscanner\_saas\_customer\_assume\_role\_permissions\_boundary) | (Optional). Permissions boundary policy (ARN or policy name/path) to attach to the CloudScanner SaaS customer assume role. | `string` | `null` | no |
 | <a name="input_cloudscanner_saas_trusted_account_id"></a> [cloudscanner\_saas\_trusted\_account\_id](#input\_cloudscanner\_saas\_trusted\_account\_id) | The AWS account ID of the Upwind SaaS account that will assume the customer assume role. Required when is\_saas = true. | `string` | `null` | no |
 | <a name="input_cloudscanner_secret_name"></a> [cloudscanner\_secret\_name](#input\_cloudscanner\_secret\_name) | The base name used when creating the CloudScanner credentials secret. | `string` | `"/cloudscanner-credentials"` | no |
 | <a name="input_credentials_secret_name_prefix"></a> [credentials\_secret\_name\_prefix](#input\_credentials\_secret\_name\_prefix) | The prefix for the AWS Secrets Manager secret name storing Upwind client credentials. Used to create the secret if `UpwindClientId` and `UpwindClientSecret` are provided. | `string` | `"/upwind"` | no |

@@ -1,5 +1,5 @@
 locals {
-  upwind_version = "TF-4.1.1"
+  upwind_version = "TF-4.2.1"
 
   # Resolve the optional permissions boundary. A value beginning with "arn:" is used verbatim; a bare
   # policy name/path is expanded to a full ARN for this account. Null when no boundary was supplied.

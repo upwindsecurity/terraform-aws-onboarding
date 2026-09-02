@@ -406,13 +406,8 @@ variable "cloudscanner_execution_role_permissions_boundary" {
   }
 }
 
-variable "cloudscanner_saas_customer_assume_role_permissions_boundary" {
-  description = "(Optional). Permissions boundary policy (ARN or policy name/path) to attach to the CloudScanner SaaS customer assume role."
-  type        = string
-  default     = null
-
-  validation {
-    condition     = var.cloudscanner_saas_customer_assume_role_permissions_boundary == null || can(regex("^arn:[a-z0-9-]*:iam::[0-9]{12}:policy/.+$", var.cloudscanner_saas_customer_assume_role_permissions_boundary)) || can(regex("^[a-zA-Z0-9+=,.@_-][a-zA-Z0-9+=,.@_/-]*$", var.cloudscanner_saas_customer_assume_role_permissions_boundary))
-    error_message = "Must be null, a valid IAM policy ARN, or an IAM policy name/path without a leading slash."
-  }
+variable "upwind_enable_self_managed_kms_key" {
+  description = "Enable self managed kms key instead of upwind managed kms key"
+  type        = bool
+  default     = false
 }
