@@ -254,6 +254,18 @@ variable "custom_tags" {
   default     = {}
 }
 
+variable "permissions_boundary" {
+  description = <<EOT
+(Optional). A pre-existing IAM permissions boundary policy to attach to the role. It constrains the maximum
+permissions the role can have and grants nothing itself - the policy must already exist in this account.
+Provide either the full policy ARN (e.g. arn:aws:iam::123456789012:policy/MyBoundary) or just the policy name
+including any path but WITHOUT a leading slash (e.g. MyBoundary or team/security/MyBoundary), in which case the
+ARN is formed for this account. Leave null to create the role without a permissions boundary.
+  EOT
+  type        = string
+  default     = null
+}
+
 variable "upwind_enable_self_managed_kms_key" {
   description = "Enable self managed kms key instead of upwind managed kms key"
   type        = bool

@@ -16,8 +16,10 @@ resource "null_resource" "validate_agentless_k8_account_whitelist" {
 }
 
 resource "aws_iam_role" "account_service_role" {
-  name        = var.account_service_role_name
-  description = "Grants Upwind Security the necessary permissions to oversee and manage account-level governance, including security audits, compliance checks, and operational control."
+  name = var.account_service_role_name
+  # Optionally constrain the role with a caller-supplied permissions boundary (null when none was provided).
+  permissions_boundary = local.permissions_boundary_arn
+  description          = "Grants Upwind Security the necessary permissions to oversee and manage account-level governance, including security audits, compliance checks, and operational control."
   assume_role_policy = jsonencode(
     {
       Version = "2012-10-17"

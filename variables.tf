@@ -351,6 +351,61 @@ variable "cloudscanner_saas_customer_assume_role_name" {
   }
 }
 
+#######################################################################################
+# Permissions boundaries (optional).
+#
+# Each role created during onboarding can be constrained by a pre-existing IAM permissions boundary
+# policy. A boundary caps the maximum permissions a role can have; it grants nothing itself and must
+# already exist in the account. Each value may be either a full policy ARN (used as-is) or a bare
+# policy name/path without a leading slash, in which case the ARN is formed for the account the role
+# is created in. Leave null (the default) to create the role without a permissions boundary.
+#
+# Full role name validation is delegated to the sub modules.
+#######################################################################################
+variable "organization_role_permissions_boundary" {
+  description = "(Optional). Permissions boundary policy (ARN or policy name/path) to attach to the Org Discovery role."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.organization_role_permissions_boundary == null || can(regex("^arn:[a-z0-9-]*:iam::[0-9]{12}:policy/.+$", var.organization_role_permissions_boundary)) || can(regex("^[a-zA-Z0-9+=,.@_-][a-zA-Z0-9+=,.@_/-]*$", var.organization_role_permissions_boundary))
+    error_message = "Must be null, a valid IAM policy ARN, or an IAM policy name/path without a leading slash."
+  }
+}
+
+variable "account_service_role_permissions_boundary" {
+  description = "(Optional). Permissions boundary policy (ARN or policy name/path) to attach to the Account Service role."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.account_service_role_permissions_boundary == null || can(regex("^arn:[a-z0-9-]*:iam::[0-9]{12}:policy/.+$", var.account_service_role_permissions_boundary)) || can(regex("^[a-zA-Z0-9+=,.@_-][a-zA-Z0-9+=,.@_/-]*$", var.account_service_role_permissions_boundary))
+    error_message = "Must be null, a valid IAM policy ARN, or an IAM policy name/path without a leading slash."
+  }
+}
+
+variable "cloudscanner_administration_role_permissions_boundary" {
+  description = "(Optional). Permissions boundary policy (ARN or policy name/path) to attach to the CloudScanner admin role."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.cloudscanner_administration_role_permissions_boundary == null || can(regex("^arn:[a-z0-9-]*:iam::[0-9]{12}:policy/.+$", var.cloudscanner_administration_role_permissions_boundary)) || can(regex("^[a-zA-Z0-9+=,.@_-][a-zA-Z0-9+=,.@_/-]*$", var.cloudscanner_administration_role_permissions_boundary))
+    error_message = "Must be null, a valid IAM policy ARN, or an IAM policy name/path without a leading slash."
+  }
+}
+
+variable "cloudscanner_execution_role_permissions_boundary" {
+  description = "(Optional). Permissions boundary policy (ARN or policy name/path) to attach to the CloudScanner execution role."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.cloudscanner_execution_role_permissions_boundary == null || can(regex("^arn:[a-z0-9-]*:iam::[0-9]{12}:policy/.+$", var.cloudscanner_execution_role_permissions_boundary)) || can(regex("^[a-zA-Z0-9+=,.@_-][a-zA-Z0-9+=,.@_/-]*$", var.cloudscanner_execution_role_permissions_boundary))
+    error_message = "Must be null, a valid IAM policy ARN, or an IAM policy name/path without a leading slash."
+  }
+}
+
 variable "upwind_enable_self_managed_kms_key" {
   description = "Enable self managed kms key instead of upwind managed kms key"
   type        = bool
