@@ -1,5 +1,5 @@
 locals {
-  upwind_version = "TF-4.2.1"
+  upwind_version = "TF-4.2.2"
 
   common_tags = merge(var.custom_tags, {
     "upwind:aws:Component"      = "Onboarding",
