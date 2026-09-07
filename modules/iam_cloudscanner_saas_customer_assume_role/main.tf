@@ -11,7 +11,7 @@ resource "aws_iam_role" "cloudscanner_saas_customer_assume_role" {
         {
           Effect = "Allow"
           Principal = {
-            AWS = "arn:aws:iam::${var.saas_trusted_account_id}:root"
+            AWS = "arn:${data.aws_partition.current.partition}:iam::${var.saas_trusted_account_id}:root"
           }
           Action = "sts:AssumeRole"
           Condition = {
