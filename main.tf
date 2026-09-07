@@ -74,6 +74,7 @@ module "account_service_role" {
   # SaaS mode tags
   is_saas_mode                                = local.condition_is_saas_mode
   cloudscanner_saas_customer_assume_role_name = local.condition_create_customer_assume_role ? local.cloudscanner_saas_customer_assume_role_name : null
+  upwind_enable_self_managed_kms_key          = var.upwind_enable_self_managed_kms_key
 }
 
 # Create the CloudScanner admin role. This will be in the orchestrator account.

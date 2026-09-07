@@ -4,7 +4,7 @@ locals {
   upwind_version = "TF-3.0.1"
 
   # The upwind_trust_arn is included in the trusted identity of roles which can be assumed by the Upwind SaaS.
-  upwind_trusted_arn = "arn:aws:iam::${var.upwind_trusted_account_id}:root"
+  upwind_trusted_arn = "arn:${data.aws_partition.current.partition}:iam::${var.upwind_trusted_account_id}:root"
 
   # The following conditional expressions are used when determining which resources can be included in each account.
 

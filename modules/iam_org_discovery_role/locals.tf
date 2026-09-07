@@ -1,5 +1,5 @@
 locals {
-  upwind_version = "TF-4.1.1"
+  upwind_version = "TF-4.2.2"
 
   # An orchestrator is considered configured only when a non-empty account id
   # is supplied. The root module passes null (not "") when unset, so both must
