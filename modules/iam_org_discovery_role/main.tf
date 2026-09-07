@@ -36,25 +36,27 @@ resource "aws_iam_role" "organization_service_role" {
       "upwind:aws:AccountServiceRoleName" = var.account_service_role_name
       "upwind:aws:CloudScannerSaaSMode"   = var.is_saas_mode ? "Enabled" : "Disabled"
     },
-    var.orchestrator_account_id != "" ? {
-      "upwind:aws:CloudScannerAdministrationRoleName" = var.cloudscanner_admin_role_name
-      "upwind:aws:CloudScannerExecutionRoleName"      = var.cloudscanner_execution_role_name
-      "upwind:aws:OrchestratorAccountId"              = var.orchestrator_account_id
-      "upwind:aws:HasDSPMPermissions"                 = var.upwind_feature_dspm_enabled ? "Yes" : "No"
-      "upwind:aws:HasDSPMRDSPermissions"              = var.upwind_feature_dspm_rds_enabled ? "Yes" : "No"
-      "upwind:aws:HasCSAutomationPermissions"         = var.upwind_cloudscanner_management_enabled ? "Yes" : "No"
-
-    } : {},
+    # The orchestrator tags are always present so the Upwind backend sees a
+    # stable set of tag keys; when no orchestrator account is configured they
+    # carry empty/"No" values instead of being omitted.
+    {
+      "upwind:aws:CloudScannerAdministrationRoleName" = local.has_orchestrator_account ? var.cloudscanner_admin_role_name : ""
+      "upwind:aws:CloudScannerExecutionRoleName"      = local.has_orchestrator_account ? var.cloudscanner_execution_role_name : ""
+      "upwind:aws:OrchestratorAccountId"              = local.has_orchestrator_account ? var.orchestrator_account_id : ""
+      "upwind:aws:HasDSPMPermissions"                 = local.has_orchestrator_account && var.upwind_feature_dspm_enabled ? "Yes" : "No"
+      "upwind:aws:HasDSPMRDSPermissions"              = local.has_orchestrator_account && var.upwind_feature_dspm_rds_enabled ? "Yes" : "No"
+      "upwind:aws:HasCSAutomationPermissions"         = local.has_orchestrator_account && var.upwind_cloudscanner_management_enabled ? "Yes" : "No"
+    },
 
     # The following tags are duplicates of the above. Ideally we should remove them.
     {
       "upwind::AccountServiceRoleName" = var.account_service_role_name
     },
-    var.orchestrator_account_id != "" ? {
-      "upwind::CloudScannerAdministrationRoleName" = var.cloudscanner_admin_role_name
-      "upwind::CloudScannerExecutionRoleName"      = var.cloudscanner_execution_role_name
-      "upwind::OrchestratorAccountId"              = var.orchestrator_account_id
-    } : {},
+    {
+      "upwind::CloudScannerAdministrationRoleName" = local.has_orchestrator_account ? var.cloudscanner_admin_role_name : ""
+      "upwind::CloudScannerExecutionRoleName"      = local.has_orchestrator_account ? var.cloudscanner_execution_role_name : ""
+      "upwind::OrchestratorAccountId"              = local.has_orchestrator_account ? var.orchestrator_account_id : ""
+    },
     var.cloudscanner_saas_customer_assume_role_name != null ? {
       "upwind:aws:CustomerAssumeRoleName" = var.cloudscanner_saas_customer_assume_role_name
     } : {}
