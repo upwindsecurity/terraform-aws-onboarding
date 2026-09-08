@@ -3,8 +3,10 @@ data "aws_caller_identity" "current" {}
 
 
 resource "aws_iam_role" "cloudscanner_administration_role" {
-  name        = var.cloudscanner_admin_role_name
-  description = ""
+  name = var.cloudscanner_admin_role_name
+  # Optionally constrain the role with a caller-supplied permissions boundary (null when none was provided).
+  permissions_boundary = local.permissions_boundary_arn
+  description          = ""
   assume_role_policy = jsonencode(
     {
       Version = "2012-10-17"
