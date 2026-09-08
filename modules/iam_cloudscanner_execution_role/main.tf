@@ -263,7 +263,7 @@ resource "aws_iam_role_policy" "cloudscanner_execution_role_cloudscanner_access_
             "ebs:GetSnapshotBlock"
           ],
           Resource = [
-            "arn:aws:ec2:*:*:snapshot/*"
+            "arn:${data.aws_partition.current.partition}:ec2:*::snapshot/*"
           ],
           Condition = {
             "StringEquals" = {

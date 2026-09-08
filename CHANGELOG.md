@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [4.2.2](https://github.com/upwindsecurity/terraform-aws-onboarding/compare/v4.2.1...v4.2.2) (2026-09-07)
+
+### Bug Fixes
+
+* **UP-6777:** fix AWS partition issues ([9d003c2](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/9d003c26ca9ce3eac4bbaaeeebef9d5417e865df))
+
 ## [4.2.1](https://github.com/upwindsecurity/terraform-aws-onboarding/compare/v4.2.0...v4.2.1) (2026-09-01)
 
 ### Bug Fixes
