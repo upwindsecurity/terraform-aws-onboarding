@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [4.3.0](https://github.com/upwindsecurity/terraform-aws-onboarding/compare/v4.2.2...v4.3.0) (2026-09-08)
+
+### Features
+
+* **UP-4131:** add parameters to allow connecting a boundry permission to an IAM role ([#53](https://github.com/upwindsecurity/terraform-aws-onboarding/issues/53)) ([de1343e](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/de1343e64907c4508a882da3baec62c381dff552))
+
 ## [4.2.2](https://github.com/upwindsecurity/terraform-aws-onboarding/compare/v4.2.1...v4.2.2) (2026-09-07)
 
 ### Bug Fixes
