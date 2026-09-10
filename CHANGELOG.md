@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [4.4.0](https://github.com/upwindsecurity/terraform-aws-onboarding/compare/v4.3.0...v4.4.0) (2026-09-10)
+
+### Features
+
+* **UP-4128:** limit snap orchestrator ([#62](https://github.com/upwindsecurity/terraform-aws-onboarding/issues/62)) ([4bbb063](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/4bbb063659bafed886ccd876ac17af379bdb4efc))
+
 ## [4.3.0](https://github.com/upwindsecurity/terraform-aws-onboarding/compare/v4.2.2...v4.3.0) (2026-09-08)
 
 ### Features
