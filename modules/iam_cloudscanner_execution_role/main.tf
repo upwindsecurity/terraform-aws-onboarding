@@ -185,10 +185,16 @@ resource "aws_iam_role_policy" "cloudscanner_execution_role_cloudscanner_access_
             "ec2:ModifySnapshotAttribute"
           ]
           Resource = "arn:${data.aws_partition.current.partition}:ec2:*::snapshot/*"
+          # Condition adds the orchestrator account ID to limit sharing to only the orchestrator account
           Condition = {
-            StringEquals = {
-              "aws:ResourceTag/UpwindComponent" = "CloudScanner"
-            }
+            StringEquals = merge(
+              {
+                "aws:ResourceTag/UpwindComponent" = "CloudScanner"
+              },
+              var.is_saas_mode ? {} : {
+                "ec2:Add/UserId" = var.orchestrator_account_id
+              }
+            )
           }
         },
         {
