@@ -185,15 +185,7 @@ resource "aws_iam_role_policy" "cloudscanner_execution_role_cloudscanner_access_
             "ec2:ModifySnapshotAttribute"
           ]
           Resource = "arn:${data.aws_partition.current.partition}:ec2:*::snapshot/*"
-          # In non-SaaS (Outpost) mode the orchestrator account is a known, customer-owned
-          # account, so we additionally pin ec2:Add/UserId to it. This ensures a tagged
-          # snapshot can only ever be shared with the orchestrator account and never leaves
-          # the customer's accounts. In SaaS mode the orchestrator lives in the Upwind SaaS
-          # org and is intentionally not pinned (CloudScanners must be free to move between
-          # accounts within the SaaS org), so the condition is omitted there.
-          # Note: ec2:Add/UserId is only evaluated on the Add operation; today the scanner
-          # never issues a Remove (snapshot sharing is torn down via DeleteSnapshot), so this
-          # does not affect cleanup. A future explicit un-share (Remove) would be blocked.
+          # Condition adds the orchestrator account ID to limit sharing to only the orchestrator account
           Condition = {
             StringEquals = merge(
               {
