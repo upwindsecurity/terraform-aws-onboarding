@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [4.5.0](https://github.com/upwindsecurity/terraform-aws-onboarding/compare/v4.4.0...v4.5.0) (2026-09-11)
+
+### Features
+
+* **UP-6452:** Adding creation of Instance Profile ([d541bd6](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/d541bd694afcfc24f70986547f902f7a0f3a7914))
+
+### Bug Fixes
+
+* **UP-6777:** fix partition issues ([06dff42](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/06dff42f3bceb1b91adf35f0fa35f482e5b86703))
+
 ## [4.4.0](https://github.com/upwindsecurity/terraform-aws-onboarding/compare/v4.3.0...v4.4.0) (2026-09-10)
 
 ### Features
