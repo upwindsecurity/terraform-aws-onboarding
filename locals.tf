@@ -13,6 +13,7 @@ locals {
   organization_account_service_role_name      = "${var.organization_role_name}${local.suffix}"
   account_service_role_name                   = "${var.account_service_role_name}${local.suffix}"
   cloudscanner_admin_role_name                = "${var.cloudscanner_administration_role_name}${local.suffix}"
+  cloudscanner_admin_role_profile_name        = "${var.cloudscanner_administration_role_profile_name}${local.suffix}"
   cloudscanner_execution_role_name            = "${var.cloudscanner_execution_role_name}${local.suffix}"
   cloudscanner_secret_name                    = "${var.credentials_secret_name_prefix}${var.cloudscanner_secret_name}${local.suffix}"
   cloudscanner_saas_customer_assume_role_name = "${var.cloudscanner_saas_customer_assume_role_name}${local.suffix}"

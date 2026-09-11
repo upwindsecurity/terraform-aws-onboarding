@@ -13,6 +13,21 @@ variable "cloudscanner_admin_role_name" {
   }
 }
 
+variable "cloudscanner_admin_role_profile_name" {
+  description = "The name to be used for the CloudScanner admin role instance profile."
+  type        = string
+
+  validation {
+    condition     = can(regex("^[a-zA-Z0-9-_]+$", var.cloudscanner_admin_role_profile_name))
+    error_message = "The CloudScanner Admin role instance profile name contains invalid characters."
+  }
+
+  validation {
+    condition     = length(var.cloudscanner_admin_role_profile_name) <= 128
+    error_message = "The CloudScanner Admin role instance profile name is too long."
+  }
+}
+
 variable "cloudscanner_execution_role_name" {
   description = "The name to be used for the CloudScanner execution role."
   type        = string

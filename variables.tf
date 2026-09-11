@@ -169,6 +169,20 @@ variable "cloudscanner_administration_role_name" {
   # Full role name validation is delegated to the sub modules.
 }
 
+variable "cloudscanner_administration_role_profile_name" {
+  description = "The name to be used for the CloudScanner admin role instance profile."
+  type        = string
+  default     = "UpwindCloudScannerAdministrationRoleProfile"
+
+  validation {
+    condition     = can(regex("^[a-zA-Z0-9-_]+$", var.cloudscanner_administration_role_profile_name))
+    error_message = "The CloudScanner Admin role instance profile name contains invalid characters."
+  }
+
+  # Full role name validation is delegated to the sub modules.
+}
+
+
 variable "cloudscanner_execution_role_name" {
   description = "The base name of the IAM execution role to be created, used for cloud scanning operations."
   type        = string

@@ -16,6 +16,7 @@ module "org_discovery_role" {
   orchestrator_account_id                     = var.orchestrator_account_id
   account_service_role_name                   = local.account_service_role_name
   cloudscanner_admin_role_name                = local.cloudscanner_admin_role_name
+  cloudscanner_admin_role_profile_name        = local.cloudscanner_admin_role_profile_name
   cloudscanner_execution_role_name            = local.cloudscanner_execution_role_name
   upwind_feature_dspm_enabled                 = var.upwind_feature_dspm_enabled
   upwind_feature_dspm_rds_enabled             = var.upwind_feature_dspm_rds_enabled
@@ -83,9 +84,10 @@ module "cloudscanner_admin_role" {
 
   source = "./modules/iam_cloudscanner_admin_role"
 
-  cloudscanner_admin_role_name     = local.cloudscanner_admin_role_name
-  cloudscanner_execution_role_name = local.cloudscanner_execution_role_name
-  custom_tags                      = var.custom_tags
+  cloudscanner_admin_role_name         = local.cloudscanner_admin_role_name
+  cloudscanner_admin_role_profile_name = local.cloudscanner_admin_role_profile_name
+  cloudscanner_execution_role_name     = local.cloudscanner_execution_role_name
+  custom_tags                          = var.custom_tags
 
   # Set the secret - either to the created secret or the ARN provided
   cloudscanner_secret_arn = local.condition_create_cloudscanner_secret ? one(module.cloudscanner_secret[*]).secret.arn : var.upwind_cloudscanner_auth_secret_arn
