@@ -719,3 +719,8 @@ resource "aws_iam_role_policy" "cloudscanner_administration_role_cloudscannerupd
     }
   )
 }
+
+resource "aws_iam_instance_profile" "cloudscanner_administration_role_instance_profile" {
+  name = var.cloudscanner_admin_role_profile_name
+  role = aws_iam_role.cloudscanner_administration_role.name
+}
