@@ -271,6 +271,20 @@ resource "aws_iam_role_policy" "account_service_view_access_policy" {
           ]
           Resource = "*"
         },
+        # AWS decrypts the identity store with the caller's credentials, so the reads above need this too.
+        {
+          Sid    = "AccessIdentityStoreKms"
+          Effect = "Allow"
+          Action = [
+            "kms:Decrypt"
+          ]
+          Resource = "*"
+          Condition = {
+            StringLike = {
+              "kms:ViaService" = "identitystore.*.amazonaws.com"
+            }
+          }
+        },
         {
           Sid    = "AccessS3"
           Effect = "Allow"
