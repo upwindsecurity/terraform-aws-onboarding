@@ -9,6 +9,20 @@ variable "upwind_trusted_account_id" {
   }
 }
 
+variable "upwind_cfn_bucket" {
+  # For the majority of use cases this should be left as the default. Non-production
+  # Upwind environments host their CloudFormation templates on a different bucket
+  # (e.g. get.upwind.dev).
+  description = "Hostname of the Upwind S3 bucket that hosts the CloudFormation templates referenced by the account service role policies."
+  type        = string
+  default     = "get.upwind.io"
+
+  validation {
+    condition     = length(var.upwind_cfn_bucket) > 0
+    error_message = "The Upwind CloudFormation bucket host must not be empty."
+  }
+}
+
 variable "external_id" {
   # The external_id is attached to the trusted entities allowing assume-role requests from upwind to be authenticated.
   description = "The external ID for secure cross-account role assumption."

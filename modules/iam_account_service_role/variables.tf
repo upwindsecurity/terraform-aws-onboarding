@@ -13,6 +13,11 @@ variable "external_id" {
   }
 }
 
+variable "upwind_cfn_bucket" {
+  description = "Hostname of the Upwind S3 bucket that hosts the CloudFormation templates referenced by this role's policies."
+  type        = string
+}
+
 variable "account_service_role_name" {
   description = "The name to be used for the Account Service role."
   type        = string

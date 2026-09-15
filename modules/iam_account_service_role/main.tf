@@ -524,7 +524,7 @@ resource "aws_iam_policy" "account_service_cloudformation_access_policy" {
             "s3:GetObject"
           ],
           Resource = [
-            "arn:${data.aws_partition.current.partition}:s3:::get.upwind.io/cfn/templates/*"
+            "arn:${data.aws_partition.current.partition}:s3:::${var.upwind_cfn_bucket}/cfn/templates/*"
           ],
           Condition = {
             StringEquals = {

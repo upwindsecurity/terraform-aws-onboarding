@@ -15,8 +15,8 @@ locals {
   })
 
   upwind_cfn_sources = [
-    "https://s3.amazonaws.com/get.upwind.io/cfn/templates/*",
-    "https://s3.us-east-1.amazonaws.com/get.upwind.io/cfn/templates/*"
+    "https://s3.amazonaws.com/${var.upwind_cfn_bucket}/cfn/templates/*",
+    "https://s3.us-east-1.amazonaws.com/${var.upwind_cfn_bucket}/cfn/templates/*"
   ]
 
   agentless_k8s_account_allowed = (

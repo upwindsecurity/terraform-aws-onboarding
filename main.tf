@@ -39,6 +39,7 @@ module "account_service_role" {
 
   trusted_arn                      = local.upwind_trusted_arn
   external_id                      = var.external_id
+  upwind_cfn_bucket                = var.upwind_cfn_bucket
   account_service_role_name        = local.account_service_role_name
   cloudscanner_admin_role_name     = local.cloudscanner_admin_role_name
   cloudscanner_execution_role_name = local.cloudscanner_execution_role_name
