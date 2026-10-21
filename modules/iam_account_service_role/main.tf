@@ -74,6 +74,21 @@ resource "aws_iam_role" "account_service_role" {
       "upwind:aws:HasAgentlessKubernetesAccessEntryPermissions" = local.agentless_k8s_access_entries_enabled ? "Yes" : "No"
       "upwind:aws:HasAgentlessKubernetesSSMPermissions"         = local.agentless_k8s_ssm_enabled ? "Yes" : "No"
     },
+    # In the case of virtual organizations we need to create add these tags regardless of whether it is just for the orchestrator account
+    # as the account service role is used for the initial onboarding process instead of the org discovery role.
+    var.is_virtual_organization ?
+    var.orchestrator_account_id != "" ?
+    {
+      "upwind:aws:HasCSAutomationPermissions"      = var.upwind_cloudscanner_management_enabled ? "Yes" : "No"
+      "upwind:aws:AccountServiceRoleName"          = var.account_service_role_name
+      "upwind::CloudScannerAdministrationRoleName" = var.cloudscanner_admin_role_name
+      "upwind::CloudScannerExecutionRoleName"      = var.cloudscanner_execution_role_name
+      "upwind::OrchestratorAccountId"              = var.orchestrator_account_id
+    } :
+    {
+      "upwind:aws:HasCSAutomationPermissions" = var.upwind_cloudscanner_management_enabled ? "Yes" : "No"
+      "upwind:aws:AccountServiceRoleName"     = var.account_service_role_name
+    } : {},
   )
 }
 

@@ -276,3 +276,15 @@ variable "upwind_enable_self_managed_kms_key" {
   type        = bool
   default     = false
 }
+
+variable "is_virtual_organization" {
+  description = "Enable virtual organization deployment mode"
+  type        = bool
+  default     = false
+}
+
+variable "orchestrator_account_id" {
+  description = "orchestrator accounts id"
+  type        = string
+  default     = ""
+}

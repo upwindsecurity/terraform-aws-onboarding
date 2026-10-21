@@ -6,7 +6,7 @@ data "aws_partition" "current" {}
 
 # The Org discovery only needs to be created in the management account
 module "org_discovery_role" {
-  count = local.condition_is_management_account ? 1 : 0
+  count = local.condition_is_management_account && !var.is_virtual_organization ? 1 : 0
 
   source = "./modules/iam_org_discovery_role"
 
