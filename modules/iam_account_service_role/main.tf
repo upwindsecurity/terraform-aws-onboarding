@@ -79,11 +79,9 @@ resource "aws_iam_role" "account_service_role" {
     var.is_virtual_organization ?
     var.orchestrator_account_id != "" ?
     {
-      "upwind:aws:HasCSAutomationPermissions"      = var.upwind_cloudscanner_management_enabled ? "Yes" : "No"
-      "upwind:aws:AccountServiceRoleName"          = var.account_service_role_name
-      "upwind::CloudScannerAdministrationRoleName" = var.cloudscanner_admin_role_name
-      "upwind::CloudScannerExecutionRoleName"      = var.cloudscanner_execution_role_name
-      "upwind::OrchestratorAccountId"              = var.orchestrator_account_id
+      "upwind:aws:HasCSAutomationPermissions" = var.upwind_cloudscanner_management_enabled ? "Yes" : "No"
+      "upwind:aws:AccountServiceRoleName"     = var.account_service_role_name
+      "upwind:aws:OrchestratorAccountId"      = var.orchestrator_account_id
     } :
     {
       "upwind:aws:HasCSAutomationPermissions" = var.upwind_cloudscanner_management_enabled ? "Yes" : "No"

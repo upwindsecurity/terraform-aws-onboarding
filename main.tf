@@ -80,6 +80,7 @@ module "account_service_role" {
   permissions_boundary                        = var.account_service_role_permissions_boundary
   upwind_enable_self_managed_kms_key          = var.upwind_enable_self_managed_kms_key
   is_virtual_organization                     = var.is_virtual_organization
+  orchestrator_account_id                     = var.orchestrator_account_id
 }
 
 # Create the CloudScanner admin role. This will be in the orchestrator account.
