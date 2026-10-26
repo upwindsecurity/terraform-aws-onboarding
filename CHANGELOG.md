@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [4.7.0](https://github.com/upwindsecurity/terraform-aws-onboarding/compare/v4.6.0...v4.7.0) (2026-10-26)
+
+### Features
+
+* **UP-10975:** enable kms key rotation ([c1eca32](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/c1eca32277dd61db01ba551e94c3311313ac8f42))
+
 ## [4.6.0](https://github.com/upwindsecurity/terraform-aws-onboarding/compare/v4.5.0...v4.6.0) (2026-09-15)
 
 ### Features
