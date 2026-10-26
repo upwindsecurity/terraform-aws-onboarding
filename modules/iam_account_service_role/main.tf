@@ -1089,11 +1089,14 @@ resource "aws_iam_policy" "account_service_cloudscanner_access_policy" {
             },
             {
               Sid = "RestrictedKMSUpdateKey"
-              # Restrict Update key operations so that only the policy and descriptions can be updated.
+              # Restrict Update key operations so that only the policy, description and rotation can be updated.
               Effect = "Allow"
               Action = [
                 "kms:UpdateKeyDescription",
-                "kms:PutKeyPolicy"
+                "kms:PutKeyPolicy",
+                "kms:EnableKeyRotation",
+                "kms:DisableKeyRotation",
+                "kms:GetKeyRotationStatus"
               ]
               Resource = [
                 "arn:${data.aws_partition.current.partition}:kms:*:${data.aws_caller_identity.current.account_id}:key/*"
