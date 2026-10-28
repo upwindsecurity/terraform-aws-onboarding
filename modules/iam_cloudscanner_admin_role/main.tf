@@ -4,6 +4,7 @@ data "aws_caller_identity" "current" {}
 
 resource "aws_iam_role" "cloudscanner_administration_role" {
   name = var.cloudscanner_admin_role_name
+  path = var.iam_role_path
   # Optionally constrain the role with a caller-supplied permissions boundary (null when none was provided).
   permissions_boundary = local.permissions_boundary_arn
   description          = ""
@@ -320,7 +321,7 @@ resource "aws_iam_role_policy" "cloudscanner_administration_role_cloudscannerope
           Action = [
             "sts:AssumeRole"
           ]
-          Resource = "arn:${data.aws_partition.current.partition}:iam::*:role/${var.cloudscanner_execution_role_name}"
+          Resource = "arn:${data.aws_partition.current.partition}:iam::*:role${var.iam_role_path}${var.cloudscanner_execution_role_name}"
         }
       ]
     }
@@ -440,7 +441,7 @@ resource "aws_iam_role_policy" "cloudscanner_administration_role_cloudscannersca
             "iam:GetRole",
             "iam:PassRole"
           ]
-          Resource = "arn:${data.aws_partition.current.partition}:iam::*:role/${var.cloudscanner_admin_role_name}"
+          Resource = "arn:${data.aws_partition.current.partition}:iam::*:role${var.iam_role_path}${var.cloudscanner_admin_role_name}"
           Condition = {
             StringEquals = {
               "iam:PassedToService" = [
@@ -521,7 +522,7 @@ resource "aws_iam_role_policy" "cloudscanner_administration_role_cloudscannersca
             "sts:AssumeRole"
           ]
           Resource = [
-            "arn:${data.aws_partition.current.partition}:iam::*:role/${var.cloudscanner_execution_role_name}"
+            "arn:${data.aws_partition.current.partition}:iam::*:role${var.iam_role_path}${var.cloudscanner_execution_role_name}"
           ]
         },
 
@@ -644,7 +645,7 @@ resource "aws_iam_role_policy" "cloudscanner_administration_role_cloudscannersna
             "sts:AssumeRole"
           ]
           Resource = [
-            "arn:${data.aws_partition.current.partition}:iam::*:role/${var.cloudscanner_execution_role_name}"
+            "arn:${data.aws_partition.current.partition}:iam::*:role${var.iam_role_path}${var.cloudscanner_execution_role_name}"
           ]
         }
       ]
@@ -722,5 +723,6 @@ resource "aws_iam_role_policy" "cloudscanner_administration_role_cloudscannerupd
 
 resource "aws_iam_instance_profile" "cloudscanner_administration_role_instance_profile" {
   name = var.cloudscanner_admin_role_profile_name
+  path = var.iam_role_path
   role = aws_iam_role.cloudscanner_administration_role.name
 }
