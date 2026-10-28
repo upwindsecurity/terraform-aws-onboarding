@@ -6,7 +6,7 @@ data "aws_partition" "current" {}
 
 # The Org discovery only needs to be created in the management account
 module "org_discovery_role" {
-  count = local.condition_is_management_account ? 1 : 0
+  count = local.condition_is_management_account && !var.is_virtual_organization ? 1 : 0
 
   source = "./modules/iam_org_discovery_role"
 
@@ -79,6 +79,8 @@ module "account_service_role" {
   cloudscanner_saas_customer_assume_role_name = local.condition_create_customer_assume_role ? local.cloudscanner_saas_customer_assume_role_name : null
   permissions_boundary                        = var.account_service_role_permissions_boundary
   upwind_enable_self_managed_kms_key          = var.upwind_enable_self_managed_kms_key
+  is_virtual_organization                     = var.is_virtual_organization
+  orchestrator_account_id                     = var.orchestrator_account_id
 }
 
 # Create the CloudScanner admin role. This will be in the orchestrator account.
