@@ -1,5 +1,5 @@
 locals {
-  upwind_version = "TF-4.7.0"
+  upwind_version = "TF-4.8.0"
   aws_account_id = data.aws_caller_identity.current.account_id
 
   # Resolve the optional permissions boundary. A value beginning with "arn:" is used verbatim; a bare

@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [4.8.0](https://github.com/upwindsecurity/terraform-aws-onboarding/compare/v4.7.0...v4.8.0) (2026-10-28)
+
+### Features
+
+* **UP-9715:** add is_virtual_organization variable to account service role module ([3f72bf4](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/3f72bf48eef81d23a3c16059b2079f607e983054))
+* **UP-9715:** add orchestrator_account_id to account service role module ([619abda](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/619abda71448259ac5b96b4c6e6cc3c9e940fe07))
+* **UP-9715:** add support for virtual organizations ([327819a](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/327819aecc0b00c598b0fcab0f1ecede2c71502d))
+
 ## [4.7.0](https://github.com/upwindsecurity/terraform-aws-onboarding/compare/v4.6.0...v4.7.0) (2026-10-26)
 
 ### Features
