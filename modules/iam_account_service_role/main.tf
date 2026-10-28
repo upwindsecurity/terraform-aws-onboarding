@@ -17,6 +17,7 @@ resource "null_resource" "validate_agentless_k8_account_whitelist" {
 
 resource "aws_iam_role" "account_service_role" {
   name = var.account_service_role_name
+  path = var.iam_role_path
   # Optionally constrain the role with a caller-supplied permissions boundary (null when none was provided).
   permissions_boundary = local.permissions_boundary_arn
   description          = "Grants Upwind Security the necessary permissions to oversee and manage account-level governance, including security audits, compliance checks, and operational control."
@@ -54,8 +55,9 @@ resource "aws_iam_role" "account_service_role" {
     # add tags for CloudScanner Discovery.    # If the role is being created with elevated permissions, we will add the additional tags needed for
     # CloudScanner Discovery
     var.apply_for_orchestrator_account ? {
-      "upwind:aws:CloudScannerAdministrationRoleName" = var.cloudscanner_admin_role_name
-      "upwind:aws:CloudScannerExecutionRoleName"      = var.cloudscanner_execution_role_name
+      # The role-name discovery tags embed the IAM path so CloudScanner reconstructs the correct ARN.
+      "upwind:aws:CloudScannerAdministrationRoleName" = "${local.role_name_path_prefix}${var.cloudscanner_admin_role_name}"
+      "upwind:aws:CloudScannerExecutionRoleName"      = "${local.role_name_path_prefix}${var.cloudscanner_execution_role_name}"
       "upwind:aws:CloudScannerInstallRegion"          = data.aws_region.current.name
       "upwind:aws:CloudScannerSecretARN"              = var.cloudscanner_secret_arn
       "upwind:aws:HasDSPMPermissions"                 = var.upwind_feature_dspm_enabled ? "Yes" : "No"
@@ -66,7 +68,7 @@ resource "aws_iam_role" "account_service_role" {
     } : {},
     # In SaaS mode, tag the account service role with the customer assume role name for discovery.
     var.cloudscanner_saas_customer_assume_role_name != null ? {
-      "upwind:aws:CustomerAssumeRoleName" = var.cloudscanner_saas_customer_assume_role_name
+      "upwind:aws:CustomerAssumeRoleName" = "${local.role_name_path_prefix}${var.cloudscanner_saas_customer_assume_role_name}"
     } : {},
     # Tags to signal whether agentless-k8s permissions were granted on this role.
     # Not gated on apply_for_orchestrator_account, added on role in all accounts.
@@ -434,6 +436,7 @@ resource "aws_iam_policy" "account_service_cloudformation_access_policy" {
   # The Cloudformation access policy should only be created when also creating the the orchestration role.
   count       = var.apply_for_orchestrator_account && var.upwind_cloudscanner_management_enabled ? 1 : 0
   name        = var.account_service_cloudformation_policy_name
+  path        = var.iam_role_path
   description = "Upwind Account Service IAM role policy for using Cloudformation to manage CloudScanners."
 
   policy = jsonencode(
@@ -558,6 +561,7 @@ resource "aws_iam_policy" "account_service_cloudscanner_ec2_access_policy" {
   # The CloudScanner EC2 access policy should only be created when also creating the the orchestration role.
   count       = var.apply_for_orchestrator_account && var.upwind_cloudscanner_management_enabled ? 1 : 0
   name        = var.account_service_cloudscanner_ec2_policy_name
+  path        = var.iam_role_path
   description = "Upwind Account Service IAM role policy to grant permissions to EC2 services used when managing CloudScanners."
 
   policy = jsonencode(
@@ -778,6 +782,7 @@ resource "aws_iam_policy" "account_service_cloudscanner_ec2_network_permissions_
   # The CloudScanner EC2 access policy should only be created when also creating the the orchestration role.
   count       = var.apply_for_orchestrator_account && var.upwind_cloudscanner_management_enabled && var.upwind_include_ec2_network_management_permissions ? 1 : 0
   name        = var.account_service_cloudscanner_ec2_network_policy_name
+  path        = var.iam_role_path
   description = "Upwind Account Service IAM role policy to grant permissions to manage EC2 network resources."
 
   policy = jsonencode(
@@ -1031,6 +1036,7 @@ resource "aws_iam_policy" "account_service_cloudscanner_access_policy" {
   # The CloudScanner access policy should only be created when also creating the the orchestration role.
   count       = var.apply_for_orchestrator_account && var.upwind_cloudscanner_management_enabled ? 1 : 0
   name        = var.account_service_cloudscanner_policy_name
+  path        = var.iam_role_path
   description = "Upwind Account Service IAM role policy to grant permissions to extra services used when managing CloudScanners."
 
   policy = jsonencode(
@@ -1298,7 +1304,7 @@ resource "aws_iam_policy" "account_service_cloudscanner_access_policy" {
             Action = [
               "iam:PassRole"
             ]
-            Resource = "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:role/${var.cloudscanner_admin_role_name}"
+            Resource = "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:role${var.iam_role_path}${var.cloudscanner_admin_role_name}"
             Condition = {
               StringEquals = {
                 "iam:PassedToService" = [
@@ -1424,6 +1430,7 @@ resource "aws_iam_role_policy_attachment" "attach_cloudscanner_access_policy" {
 resource "aws_iam_policy" "account_service_agentless_k8s_access_entries_access_policy" {
   count       = local.agentless_k8s_access_entries_enabled ? 1 : 0
   name        = var.account_service_agentless_k8s_access_entries_policy_name
+  path        = var.iam_role_path
   description = "Upwind Account Service IAM role policy for agentless Kubernetes resource fetching using EKS access entries as the authentication method."
 
   policy = jsonencode(
@@ -1450,7 +1457,7 @@ resource "aws_iam_policy" "account_service_agentless_k8s_access_entries_access_p
           Resource = "arn:${data.aws_partition.current.partition}:eks:*:${data.aws_caller_identity.current.account_id}:cluster/*"
           Condition = {
             StringEquals = {
-              "eks:principalArn"                          = "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:role/${var.account_service_role_name}"
+              "eks:principalArn"                          = "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:role${var.iam_role_path}${var.account_service_role_name}"
               "aws:RequestTag/upwind:aws:CreatedByUpwind" = "true"
             }
           }
@@ -1462,7 +1469,7 @@ resource "aws_iam_policy" "account_service_agentless_k8s_access_entries_access_p
           Action = [
             "eks:DescribeAccessEntry"
           ]
-          Resource = "arn:${data.aws_partition.current.partition}:eks:*:${data.aws_caller_identity.current.account_id}:access-entry/*/role/${data.aws_caller_identity.current.account_id}/${var.account_service_role_name}/*"
+          Resource = "arn:${data.aws_partition.current.partition}:eks:*:${data.aws_caller_identity.current.account_id}:access-entry/*/role/${data.aws_caller_identity.current.account_id}${var.iam_role_path}${var.account_service_role_name}/*"
         },
         {
           Sid = "ListAssociatedAccessPolicies"
@@ -1471,7 +1478,7 @@ resource "aws_iam_policy" "account_service_agentless_k8s_access_entries_access_p
           Action = [
             "eks:ListAssociatedAccessPolicies"
           ]
-          Resource = "arn:${data.aws_partition.current.partition}:eks:*:${data.aws_caller_identity.current.account_id}:access-entry/*/role/${data.aws_caller_identity.current.account_id}/${var.account_service_role_name}/*"
+          Resource = "arn:${data.aws_partition.current.partition}:eks:*:${data.aws_caller_identity.current.account_id}:access-entry/*/role/${data.aws_caller_identity.current.account_id}${var.iam_role_path}${var.account_service_role_name}/*"
         },
         {
           Sid = "AllowTaggingOnCreation"
@@ -1480,7 +1487,7 @@ resource "aws_iam_policy" "account_service_agentless_k8s_access_entries_access_p
           Action = [
             "eks:TagResource"
           ]
-          Resource = "arn:${data.aws_partition.current.partition}:eks:*:${data.aws_caller_identity.current.account_id}:access-entry/*/role/${data.aws_caller_identity.current.account_id}/${var.account_service_role_name}/*"
+          Resource = "arn:${data.aws_partition.current.partition}:eks:*:${data.aws_caller_identity.current.account_id}:access-entry/*/role/${data.aws_caller_identity.current.account_id}${var.iam_role_path}${var.account_service_role_name}/*"
           Condition = {
             StringEquals = {
               "aws:RequestTag/upwind:aws:CreatedByUpwind" = "true"
@@ -1494,14 +1501,14 @@ resource "aws_iam_policy" "account_service_agentless_k8s_access_entries_access_p
           Action = [
             "eks:AssociateAccessPolicy"
           ]
-          Resource = "arn:${data.aws_partition.current.partition}:eks:*:${data.aws_caller_identity.current.account_id}:access-entry/*/role/${data.aws_caller_identity.current.account_id}/${var.account_service_role_name}/*"
+          Resource = "arn:${data.aws_partition.current.partition}:eks:*:${data.aws_caller_identity.current.account_id}:access-entry/*/role/${data.aws_caller_identity.current.account_id}${var.iam_role_path}${var.account_service_role_name}/*"
           Condition = {
             StringEquals = {
               "eks:policyArn" = concat(
                 ["arn:${data.aws_partition.current.partition}:eks::aws:cluster-access-policy/AmazonEKSViewPolicy"],
                 var.upwind_agentless_k8s_eks_admin_view_policy_enabled ? ["arn:${data.aws_partition.current.partition}:eks::aws:cluster-access-policy/AmazonEKSAdminViewPolicy"] : []
               )
-              "eks:principalArn" = "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:role/${var.account_service_role_name}"
+              "eks:principalArn" = "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:role${var.iam_role_path}${var.account_service_role_name}"
             }
           }
         },
@@ -1513,7 +1520,7 @@ resource "aws_iam_policy" "account_service_agentless_k8s_access_entries_access_p
             "eks:DeleteAccessEntry",
             "eks:DisassociateAccessPolicy"
           ]
-          Resource = "arn:${data.aws_partition.current.partition}:eks:*:${data.aws_caller_identity.current.account_id}:access-entry/*/role/${data.aws_caller_identity.current.account_id}/${var.account_service_role_name}/*"
+          Resource = "arn:${data.aws_partition.current.partition}:eks:*:${data.aws_caller_identity.current.account_id}:access-entry/*/role/${data.aws_caller_identity.current.account_id}${var.iam_role_path}${var.account_service_role_name}/*"
           Condition = {
             StringEquals = {
               "aws:ResourceTag/upwind:aws:CreatedByUpwind" = "true"
@@ -1543,6 +1550,7 @@ resource "aws_iam_role_policy_attachment" "attach_agentless_k8s_access_entries_a
 resource "aws_iam_policy" "account_service_agentless_k8s_ssm_access_policy" {
   count       = local.agentless_k8s_ssm_enabled ? 1 : 0
   name        = var.account_service_agentless_k8s_ssm_policy_name
+  path        = var.iam_role_path
   description = "Upwind Account Service IAM role policy for agentless Kubernetes resource fetching from private EKS clusters via SSM tunnels."
 
   policy = jsonencode(

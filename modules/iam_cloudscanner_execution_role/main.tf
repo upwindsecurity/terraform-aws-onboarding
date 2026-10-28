@@ -3,6 +3,7 @@ data "aws_caller_identity" "current" {}
 
 resource "aws_iam_role" "cloudscanner_execution_role" {
   name = var.cloudscanner_execution_role_name
+  path = var.iam_role_path
   # Optionally constrain the role with a caller-supplied permissions boundary (null when none was provided).
   permissions_boundary = local.permissions_boundary_arn
   description          = "Grants Upwind Security the necessary permissions to execute cloud scanning operations."
@@ -21,9 +22,9 @@ resource "aws_iam_role" "cloudscanner_execution_role" {
               # In SaaS mode trust the customer assume role (assumed by Upwind SaaS).
               # In non-SaaS mode trust the CloudScanner admin role in the orchestrator account.
               "aws:PrincipalArn" = var.is_saas_mode ? (
-                "arn:${data.aws_partition.current.partition}:iam::${var.orchestrator_account_id}:role/${var.cloudscanner_saas_customer_assume_role_name}"
+                "arn:${data.aws_partition.current.partition}:iam::${var.orchestrator_account_id}:role${var.iam_role_path}${var.cloudscanner_saas_customer_assume_role_name}"
                 ) : (
-                "arn:${data.aws_partition.current.partition}:iam::${var.orchestrator_account_id}:role/${var.cloudscanner_admin_role_name}"
+                "arn:${data.aws_partition.current.partition}:iam::${var.orchestrator_account_id}:role${var.iam_role_path}${var.cloudscanner_admin_role_name}"
               )
             }
           }

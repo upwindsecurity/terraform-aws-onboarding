@@ -2,6 +2,7 @@ data "aws_partition" "current" {}
 
 resource "aws_iam_role" "cloudscanner_saas_customer_assume_role" {
   name        = var.role_name
+  path        = var.iam_role_path
   description = "Grants Upwind Security the necessary permissions to assume the CloudScanner Execution role to perform scanning operations."
 
   assume_role_policy = jsonencode(
@@ -45,7 +46,7 @@ resource "aws_iam_role_policy" "cloudscanner_saas_customer_assume_role_policy" {
           Sid      = "PermitExecutionRoleAssumption"
           Effect   = "Allow"
           Action   = ["sts:AssumeRole"]
-          Resource = "arn:${data.aws_partition.current.partition}:iam::*:role/${var.cloudscanner_execution_role_name}"
+          Resource = "arn:${data.aws_partition.current.partition}:iam::*:role${var.iam_role_path}${var.cloudscanner_execution_role_name}"
         }
       ]
     }

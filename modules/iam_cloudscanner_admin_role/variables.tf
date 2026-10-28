@@ -71,3 +71,9 @@ ARN is formed for this account. Leave null to create the role without a permissi
   type        = string
   default     = null
 }
+
+variable "iam_role_path" {
+  description = "The common IAM path applied to the role and instance profile created by this module. Must begin and end with a forward slash (/). Defaults to \"/\" (the AWS default)."
+  type        = string
+  default     = "/"
+}
