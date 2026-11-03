@@ -282,3 +282,14 @@ variable "iam_role_path" {
   type        = string
   default     = "/"
 }
+variable "is_virtual_organization" {
+  description = "Enable virtual organization deployment mode"
+  type        = bool
+  default     = false
+}
+
+variable "orchestrator_account_id" {
+  description = "orchestrator accounts id"
+  type        = string
+  default     = ""
+}

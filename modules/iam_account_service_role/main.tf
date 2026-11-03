@@ -76,6 +76,19 @@ resource "aws_iam_role" "account_service_role" {
       "upwind:aws:HasAgentlessKubernetesAccessEntryPermissions" = local.agentless_k8s_access_entries_enabled ? "Yes" : "No"
       "upwind:aws:HasAgentlessKubernetesSSMPermissions"         = local.agentless_k8s_ssm_enabled ? "Yes" : "No"
     },
+    # In the case of virtual organizations we need to create add these tags regardless of whether it is just for the orchestrator account
+    # as the account service role is used for the initial onboarding process instead of the org discovery role.
+    var.is_virtual_organization ?
+    var.orchestrator_account_id != "" ?
+    {
+      "upwind:aws:HasCSAutomationPermissions" = var.upwind_cloudscanner_management_enabled ? "Yes" : "No"
+      "upwind:aws:AccountServiceRoleName"     = var.account_service_role_name
+      "upwind:aws:OrchestratorAccountId"      = var.orchestrator_account_id
+    } :
+    {
+      "upwind:aws:HasCSAutomationPermissions" = var.upwind_cloudscanner_management_enabled ? "Yes" : "No"
+      "upwind:aws:AccountServiceRoleName"     = var.account_service_role_name
+    } : {},
   )
 }
 
@@ -1095,11 +1108,14 @@ resource "aws_iam_policy" "account_service_cloudscanner_access_policy" {
             },
             {
               Sid = "RestrictedKMSUpdateKey"
-              # Restrict Update key operations so that only the policy and descriptions can be updated.
+              # Restrict Update key operations so that only the policy, description and rotation can be updated.
               Effect = "Allow"
               Action = [
                 "kms:UpdateKeyDescription",
-                "kms:PutKeyPolicy"
+                "kms:PutKeyPolicy",
+                "kms:EnableKeyRotation",
+                "kms:DisableKeyRotation",
+                "kms:GetKeyRotationStatus"
               ]
               Resource = [
                 "arn:${data.aws_partition.current.partition}:kms:*:${data.aws_caller_identity.current.account_id}:key/*"
