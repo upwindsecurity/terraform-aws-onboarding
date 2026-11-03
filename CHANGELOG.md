@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [4.9.0](https://github.com/upwindsecurity/terraform-aws-onboarding/compare/v4.8.0...v4.9.0) (2026-11-03)
+
+### Features
+
+* **UP-2489:** add configurable IAM path to onboarding roles and policies ([#68](https://github.com/upwindsecurity/terraform-aws-onboarding/issues/68)) ([269614b](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/269614b2bfb08a5dca668b7c9498cb7f545bbef3))
+
 ## [4.8.0](https://github.com/upwindsecurity/terraform-aws-onboarding/compare/v4.7.0...v4.8.0) (2026-10-28)
 
 ### Features
