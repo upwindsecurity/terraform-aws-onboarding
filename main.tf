@@ -12,6 +12,7 @@ module "org_discovery_role" {
 
   trusted_arn                                 = local.upwind_trusted_arn
   external_id                                 = var.external_id
+  iam_role_path                               = var.iam_role_path
   org_discovery_role_name                     = local.organization_account_service_role_name
   orchestrator_account_id                     = var.orchestrator_account_id
   account_service_role_name                   = local.account_service_role_name
@@ -39,6 +40,7 @@ module "account_service_role" {
 
   trusted_arn                      = local.upwind_trusted_arn
   external_id                      = var.external_id
+  iam_role_path                    = var.iam_role_path
   upwind_cfn_bucket                = var.upwind_cfn_bucket
   account_service_role_name        = local.account_service_role_name
   cloudscanner_admin_role_name     = local.cloudscanner_admin_role_name
@@ -89,6 +91,7 @@ module "cloudscanner_admin_role" {
 
   source = "./modules/iam_cloudscanner_admin_role"
 
+  iam_role_path                        = var.iam_role_path
   cloudscanner_admin_role_name         = local.cloudscanner_admin_role_name
   cloudscanner_admin_role_profile_name = local.cloudscanner_admin_role_profile_name
   cloudscanner_execution_role_name     = local.cloudscanner_execution_role_name
@@ -108,6 +111,7 @@ module "cloudscanner_execution_role" {
 
   source = "./modules/iam_cloudscanner_execution_role"
 
+  iam_role_path                    = var.iam_role_path
   orchestrator_account_id          = var.orchestrator_account_id
   cloudscanner_admin_role_name     = local.cloudscanner_admin_role_name
   cloudscanner_execution_role_name = local.cloudscanner_execution_role_name
@@ -141,6 +145,7 @@ resource "aws_iam_policy" "cloudscanner_dspm_rds" {
   count = local.dspm_rds_enabled && (length(module.cloudscanner_execution_role) > 0 || length(module.cloudscanner_admin_role) > 0) ? 1 : 0
 
   name        = local.cloudscanner_dspm_rds_policy_name
+  path        = var.iam_role_path
   description = "Upwind DSPM RDS scanning permissions: create, copy, restore, share, and delete Upwind-tagged RDS snapshots and scan copies, perform the KMS re-encryption, and log in to discover databases."
 
   policy = jsonencode(
@@ -332,6 +337,7 @@ resource "aws_iam_policy" "cloudscanner_dspm_rds_vpc_access" {
   count = local.dspm_rds_enabled && length(module.cloudscanner_admin_role) > 0 ? 1 : 0
 
   name        = local.cloudscanner_dspm_rds_vpc_access_policy_name
+  path        = var.iam_role_path
   description = "VPC networking permissions (elastic network interfaces) for the in-VPC Upwind DSPM RDS scanning lambda."
 
   policy = jsonencode(
@@ -400,6 +406,7 @@ module "cloudscanner_saas_customer_assume_role" {
 
   source = "./modules/iam_cloudscanner_saas_customer_assume_role"
 
+  iam_role_path                    = var.iam_role_path
   role_name                        = local.cloudscanner_saas_customer_assume_role_name
   saas_trusted_account_id          = local.saas_trusted_account_id
   external_id                      = var.external_id

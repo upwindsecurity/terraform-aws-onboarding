@@ -4,6 +4,7 @@ data "aws_caller_identity" "current" {}
 resource "aws_iam_role" "organization_service_role" {
 
   name = var.org_discovery_role_name
+  path = var.iam_role_path
   # Optionally constrain the role with a caller-supplied permissions boundary (null when none was provided).
   permissions_boundary = local.permissions_boundary_arn
   description          = ""
@@ -36,13 +37,16 @@ resource "aws_iam_role" "organization_service_role" {
     {
       "upwind:aws:Component"              = "Onboarding",
       "upwind:aws:ReleaseVersion"         = local.upwind_version
-      "upwind:aws:AccountServiceRoleName" = var.account_service_role_name
+      "upwind:aws:AccountServiceRoleName" = "${local.role_name_path_prefix}${var.account_service_role_name}"
       "upwind:aws:CloudScannerSaaSMode"   = var.is_saas_mode ? "Enabled" : "Disabled"
     },
     var.orchestrator_account_id != "" ? {
-      "upwind:aws:CloudScannerAdministrationRoleName"        = var.cloudscanner_admin_role_name
+      # The role-name discovery tags embed the IAM path so CloudScanner reconstructs the correct ARN; the
+      # instance-profile name tag is intentionally left bare (it is not an IAM role path), matching the v2
+      # CloudFormation templates.
+      "upwind:aws:CloudScannerAdministrationRoleName"        = "${local.role_name_path_prefix}${var.cloudscanner_admin_role_name}"
       "upwind:aws:CloudScannerAdministrationRoleProfileName" = var.cloudscanner_admin_role_profile_name
-      "upwind:aws:CloudScannerExecutionRoleName"             = var.cloudscanner_execution_role_name
+      "upwind:aws:CloudScannerExecutionRoleName"             = "${local.role_name_path_prefix}${var.cloudscanner_execution_role_name}"
       "upwind:aws:OrchestratorAccountId"                     = var.orchestrator_account_id
       "upwind:aws:HasDSPMPermissions"                        = var.upwind_feature_dspm_enabled ? "Yes" : "No"
       "upwind:aws:HasDSPMRDSPermissions"                     = var.upwind_feature_dspm_rds_enabled ? "Yes" : "No"
@@ -52,15 +56,15 @@ resource "aws_iam_role" "organization_service_role" {
 
     # The following tags are duplicates of the above. Ideally we should remove them.
     {
-      "upwind::AccountServiceRoleName" = var.account_service_role_name
+      "upwind::AccountServiceRoleName" = "${local.role_name_path_prefix}${var.account_service_role_name}"
     },
     var.orchestrator_account_id != "" ? {
-      "upwind::CloudScannerAdministrationRoleName" = var.cloudscanner_admin_role_name
-      "upwind::CloudScannerExecutionRoleName"      = var.cloudscanner_execution_role_name
+      "upwind::CloudScannerAdministrationRoleName" = "${local.role_name_path_prefix}${var.cloudscanner_admin_role_name}"
+      "upwind::CloudScannerExecutionRoleName"      = "${local.role_name_path_prefix}${var.cloudscanner_execution_role_name}"
       "upwind::OrchestratorAccountId"              = var.orchestrator_account_id
     } : {},
     var.cloudscanner_saas_customer_assume_role_name != null ? {
-      "upwind:aws:CustomerAssumeRoleName" = var.cloudscanner_saas_customer_assume_role_name
+      "upwind:aws:CustomerAssumeRoleName" = "${local.role_name_path_prefix}${var.cloudscanner_saas_customer_assume_role_name}"
     } : {}
   )
 }

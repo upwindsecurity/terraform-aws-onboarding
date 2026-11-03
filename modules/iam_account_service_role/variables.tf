@@ -277,6 +277,11 @@ variable "upwind_enable_self_managed_kms_key" {
   default     = false
 }
 
+variable "iam_role_path" {
+  description = "The common IAM path applied to the role and managed policies created by this module. Must begin and end with a forward slash (/). Defaults to \"/\" (the AWS default)."
+  type        = string
+  default     = "/"
+}
 variable "is_virtual_organization" {
   description = "Enable virtual organization deployment mode"
   type        = bool

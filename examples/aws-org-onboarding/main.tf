@@ -23,6 +23,11 @@ module "upwind_org_account_onboarding" {
   # The role name suffix is a random set of characters that will be appended to each resource id to ensure uniqueness.
   role_name_suffix = "abcd1234"
 
+  # Optionally apply a common IAM path to every role, policy and instance profile created by the module.
+  # Must begin and end with a forward slash (/). Defaults to "/" (the AWS default). The same value must be
+  # used consistently across all accounts.
+  # iam_role_path = "/Upwind/"
+
   # The credentials can either be provided as values or as an existing secret ARN
   # (see the upwind_cloudscanner_auth_secret_arn variable).
   upwind_cloudscanner_auth_client_id    = "<<cloudscanner-client-id>>"

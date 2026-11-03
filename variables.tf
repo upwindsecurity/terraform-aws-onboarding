@@ -264,6 +264,23 @@ variable "role_name_suffix" {
   # These will be fully validated by the sub modules.
 }
 
+variable "iam_role_path" {
+  # A single customisable path applied to every IAM role, managed policy and instance profile created
+  # during onboarding. It maps straight through to the IAM Path property, so it must begin and end with a
+  # forward slash (/) - e.g. "/security/upwind/". Setting a path changes the role ARNs (and the discoverable
+  # role names) from arn:...:role/<name> to arn:...:role<path><name>. The default "/" is the AWS default and
+  # leaves existing installations unchanged. IMPORTANT: changing this on an existing installation replaces the
+  # roles (the path is part of their identity).
+  description = "The common IAM path applied to all onboarding IAM roles, policies and instance profiles. Must begin and end with a forward slash (/)."
+  type        = string
+  default     = "/"
+
+  validation {
+    condition     = var.iam_role_path == "/" || can(regex("^/[\\x21-\\x7F]*/$", var.iam_role_path))
+    error_message = "The IAM role path must begin and end with a forward slash (/), e.g. \"/\" or \"/security/upwind/\"."
+  }
+}
+
 #######################################################################################
 # The following variables are used conditionally enable / disable feature options
 #######################################################################################

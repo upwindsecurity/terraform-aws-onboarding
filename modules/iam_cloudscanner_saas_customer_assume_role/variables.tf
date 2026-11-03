@@ -48,3 +48,9 @@ variable "custom_tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "iam_role_path" {
+  description = "The common IAM path applied to the role created by this module. Must begin and end with a forward slash (/). Defaults to \"/\" (the AWS default)."
+  type        = string
+  default     = "/"
+}
