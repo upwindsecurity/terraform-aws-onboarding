@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [4.9.1](https://github.com/upwindsecurity/terraform-aws-onboarding/compare/v4.9.0...v4.9.1) (2026-11-05)
+
+### Bug Fixes
+
+* **UP-11226:** apply required tags for SaaS Virtual Org onboarding ([77fe8fd](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/77fe8fde8bd69e0a59ba8202ac86a574a517a8b4))
+* **UP-11226:** apply required tags for SaaS Virtual Org onboarding ([f0f3502](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/f0f35025756e838c91271f275f6d949173afa3d9))
+
 ## [4.9.0](https://github.com/upwindsecurity/terraform-aws-onboarding/compare/v4.8.0...v4.9.0) (2026-11-03)
 
 ### Features
