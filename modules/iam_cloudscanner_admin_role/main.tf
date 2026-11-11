@@ -271,6 +271,22 @@ resource "aws_iam_role_policy" "cloudscanner_administration_role_cloudscannerope
           }
         },
         {
+          Sid = "ReadTaggedArtifactRegistrySecrets"
+          # Harness Artifact Registry credentials live in a customer-created secret; the tag is
+          # the customer's grant and kill switch, so no list permission and no name coupling.
+          Effect = "Allow"
+          Action = [
+            "secretsmanager:GetSecretValue",
+            "secretsmanager:DescribeSecret"
+          ]
+          Resource = "*"
+          Condition = {
+            StringEquals = {
+              "aws:ResourceTag/upwind-artifact-registry" = "true"
+            }
+          }
+        },
+        {
           Effect = "Allow"
           Action = [
             "autoscaling:SetInstanceProtection"
