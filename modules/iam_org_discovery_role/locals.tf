@@ -1,5 +1,5 @@
 locals {
-  upwind_version = "TF-4.9.1"
+  upwind_version = "TF-4.10.0"
 
   # Prefix applied to the role-name discovery tag values so CloudScanner reconstructs the correct ARN when a
   # custom IAM path is set. Empty for the default path ("/") to preserve the legacy bare role-name values.

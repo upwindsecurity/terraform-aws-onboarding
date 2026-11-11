@@ -1,3 +1,3 @@
 locals {
-  upwind_version = "TF-4.9.1"
+  upwind_version = "TF-4.10.0"
 }

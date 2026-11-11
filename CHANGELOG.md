@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [4.10.0](https://github.com/upwindsecurity/terraform-aws-onboarding/compare/v4.9.1...v4.10.0) (2026-11-11)
+
+### Features
+
+* **UP-11252:** let the CloudScanner admin role read tagged artifact registry secrets ([fc5cce6](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/fc5cce618536b243b3a57595876844b2fe226693))
+
 ## [4.9.1](https://github.com/upwindsecurity/terraform-aws-onboarding/compare/v4.9.0...v4.9.1) (2026-11-05)
 
 ### Bug Fixes
