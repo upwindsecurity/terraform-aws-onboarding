@@ -137,19 +137,16 @@ provider "aws" {
 
 module "upwind_aws_org_onboarding" {
   source = "upwindsecurity/onboarding/aws"
-  # Get versions from https://registry.terraform.io/modules/upwindsecurity/onboarding/aws/latest
-  # The root-module source exists from 4.0.0 onwards; earlier versions used
-  # the //modules/aws-org-onboarding (3.x) or //modules/main/aws-org-onboarding
-  # (2.x) submodule paths.
-  version = "~> 4.0"
+  version = "~> 5.0"
+  
+  external_id = "F083B753-06B5-40B2-BE41-4035D6A7B6C7"
 
-  external_id                         = "F083B753-06B5-40B2-BE41-4035D6A7B6C7"
+  orchestrator_account_id             = "123456789012"
   management_account_id               = "098765432109"
   install_roles_in_management_account = true
-  role_name_suffix                    = "otmgax1m"
 
-  # optional. for cloudscanner installation only
-  orchestrator_account_id               = "123456789012"
+  role_name_suffix = "otmgax1m"
+
   upwind_cloudscanner_auth_client_id    = "<<cloudscanner-client-id>>"
   upwind_cloudscanner_auth_secret_value = "<<cloudscanner-client-secret>>"
 }
@@ -170,8 +167,9 @@ provider "aws" {
 }
 
 module "upwind_aws_org_onboarding" {
-  source = "https://get.upwind.io/terraform/modules/aws-org-onboarding/aws-org-onboarding-X.Y.Z.tar.gz"
-
+  source = "upwindsecurity/onboarding/aws"
+  version = "~> 5.0"
+  
   external_id = "F083B753-06B5-40B2-BE41-4035D6A7B6C7"
 
   orchestrator_account_id             = "123456789012"
@@ -212,8 +210,9 @@ provider "aws" {
 }
 
 module "upwind_aws_org_onboarding" {
-  source = "https://get.upwind.io/terraform/modules/aws-org-onboarding/aws-org-onboarding-X.Y.Z.tar.gz"
-
+  source = "upwindsecurity/onboarding/aws"
+  version = "~> 5.0"
+  
   external_id = "F083B753-06B5-40B2-BE41-4035D6A7B6C7"
 
   orchestrator_account_id             = "123456789012"
@@ -244,13 +243,13 @@ output "discovery_arn" {
 ## Providers
 
 | Name | Version |
-|------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | >= 5.32.0 |
-| <a name="provider_null"></a> [null](#provider\_null) | ~> 3.0 |
+| ---- | ------- |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.58.0 |
+| <a name="provider_null"></a> [null](#provider\_null) | 3.3.0 |
 ## Outputs
 
 | Name | Description |
-|------|-------------|
+| ---- | ----------- |
 | <a name="output_account_service_role_arn"></a> [account\_service\_role\_arn](#output\_account\_service\_role\_arn) | The ARN of the IAM role created for security auditing purposes. |
 | <a name="output_account_service_role_name"></a> [account\_service\_role\_name](#output\_account\_service\_role\_name) | The Name of the IAM role created for security auditing purposes. |
 | <a name="output_cloudscanner_admin_role_arn"></a> [cloudscanner\_admin\_role\_arn](#output\_cloudscanner\_admin\_role\_arn) | The ARN of the CloudScanner admin IAM role created for managing cloud scanning operations. |
@@ -267,17 +266,18 @@ output "discovery_arn" {
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
+| ---- | ----------- | ---- | ------- | :------: |
 | <a name="input_account_service_agentless_k8s_access_entries_policy_name"></a> [account\_service\_agentless\_k8s\_access\_entries\_policy\_name](#input\_account\_service\_agentless\_k8s\_access\_entries\_policy\_name) | The base name to be used for the agentless Kubernetes access entries policy in the account service role. | `string` | `"UpwindAccountServiceAgentlessK8sAEPolicy"` | no |
 | <a name="input_account_service_agentless_k8s_ssm_policy_name"></a> [account\_service\_agentless\_k8s\_ssm\_policy\_name](#input\_account\_service\_agentless\_k8s\_ssm\_policy\_name) | The base name to be used for the agentless Kubernetes SSM policy in the account service role. | `string` | `"UpwindAccountServiceAgentlessK8sSSMPolicy"` | no |
 | <a name="input_account_service_cloudformation_policy_name"></a> [account\_service\_cloudformation\_policy\_name](#input\_account\_service\_cloudformation\_policy\_name) | The base name to be used for the Cloudformation policy name in the account service role. | `string` | `"UpwindAccountServiceCloudFormationPolicy"` | no |
-| <a name="input_account_service_cloudscanner_ec2_network_policy_name"></a> [account\_service\_cloudscanner\_ec2\_network\_policy\_name](#input\_account\_service\_cloudscanner\_ec2\_network\_policy\_name) | The base name to be used when creating the CloudScanner EC2 Network Policy for the Account Service role.<br>This policy contains permissions to create and manage EC2 network resources which can be omitted if you<br>intend to provide the network stack configuration. | `string` | `"UpwindAccountServiceCloudScannerEC2NetworkPolicy"` | no |
+| <a name="input_account_service_cloudscanner_ec2_network_policy_name"></a> [account\_service\_cloudscanner\_ec2\_network\_policy\_name](#input\_account\_service\_cloudscanner\_ec2\_network\_policy\_name) | The base name to be used when creating the CloudScanner EC2 Network Policy for the Account Service role.<br/>This policy contains permissions to create and manage EC2 network resources which can be omitted if you<br/>intend to provide the network stack configuration. | `string` | `"UpwindAccountServiceCloudScannerEC2NetworkPolicy"` | no |
 | <a name="input_account_service_cloudscanner_ec2_policy_name"></a> [account\_service\_cloudscanner\_ec2\_policy\_name](#input\_account\_service\_cloudscanner\_ec2\_policy\_name) | The base name to be used for the CloudScanner EC2 policy name in the account service role. | `string` | `"UpwindAccountServiceCloudScannerEC2Policy"` | no |
 | <a name="input_account_service_cloudscanner_policy_name"></a> [account\_service\_cloudscanner\_policy\_name](#input\_account\_service\_cloudscanner\_policy\_name) | The base name to be used for the CloudScanner policy name in the account service role. | `string` | `"UpwindAccountServiceCloudScannerPolicy"` | no |
 | <a name="input_account_service_role_name"></a> [account\_service\_role\_name](#input\_account\_service\_role\_name) | The base name of the IAM role to be created, used for security auditing purposes. | `string` | `"UpwindAccountServiceRole"` | no |
 | <a name="input_account_service_role_permissions_boundary"></a> [account\_service\_role\_permissions\_boundary](#input\_account\_service\_role\_permissions\_boundary) | (Optional). Permissions boundary policy (ARN or policy name/path) to attach to the Account Service role. | `string` | `null` | no |
 | <a name="input_cloudscanner_administration_role_name"></a> [cloudscanner\_administration\_role\_name](#input\_cloudscanner\_administration\_role\_name) | The base name of the IAM administration role to be created, used for cloud scanning operations. | `string` | `"UpwindCloudScannerAdministrationRole"` | no |
-| <a name="input_cloudscanner_administration_role_permissions_boundary"></a> [cloudscanner\_administration\_role\_permissions\_boundary](#input\_cloudscanner\_administration\_role\_permissions\_boundary) | (Optional). Permissions boundary policy (ARN or policy name/path) to attach to the CloudScanner administration role. | `string` | `null` | no |
+| <a name="input_cloudscanner_administration_role_permissions_boundary"></a> [cloudscanner\_administration\_role\_permissions\_boundary](#input\_cloudscanner\_administration\_role\_permissions\_boundary) | (Optional). Permissions boundary policy (ARN or policy name/path) to attach to the CloudScanner admin role. | `string` | `null` | no |
+| <a name="input_cloudscanner_administration_role_profile_name"></a> [cloudscanner\_administration\_role\_profile\_name](#input\_cloudscanner\_administration\_role\_profile\_name) | The name to be used for the CloudScanner admin role instance profile. | `string` | `"UpwindCloudScannerAdministrationRoleProfile"` | no |
 | <a name="input_cloudscanner_execution_role_name"></a> [cloudscanner\_execution\_role\_name](#input\_cloudscanner\_execution\_role\_name) | The base name of the IAM execution role to be created, used for cloud scanning operations. | `string` | `"UpwindCloudScannerExecutionRole"` | no |
 | <a name="input_cloudscanner_execution_role_permissions_boundary"></a> [cloudscanner\_execution\_role\_permissions\_boundary](#input\_cloudscanner\_execution\_role\_permissions\_boundary) | (Optional). Permissions boundary policy (ARN or policy name/path) to attach to the CloudScanner execution role. | `string` | `null` | no |
 | <a name="input_cloudscanner_saas_customer_assume_role_name"></a> [cloudscanner\_saas\_customer\_assume\_role\_name](#input\_cloudscanner\_saas\_customer\_assume\_role\_name) | Base name of the IAM role created in the orchestrator account that the Upwind SaaS account assumes to perform scanning. Only used when is\_saas = true. | `string` | `"UpwindCloudScannerCustomerAssumeRole"` | no |
@@ -286,34 +286,50 @@ output "discovery_arn" {
 | <a name="input_credentials_secret_name_prefix"></a> [credentials\_secret\_name\_prefix](#input\_credentials\_secret\_name\_prefix) | The prefix for the AWS Secrets Manager secret name storing Upwind client credentials. Used to create the secret if `UpwindClientId` and `UpwindClientSecret` are provided. | `string` | `"/upwind"` | no |
 | <a name="input_current_account_id"></a> [current\_account\_id](#input\_current\_account\_id) | (Optional). Explicit account ID for AWS account being configured. Provide this when using upwind\_agentless\_k8s\_account\_whitelist so terraform can determine resource creation during plan | `string` | `null` | no |
 | <a name="input_custom_tags"></a> [custom\_tags](#input\_custom\_tags) | Custom tags which shall be applied to each resource created by the module. | `map(string)` | `{}` | no |
+| <a name="input_deployment_region"></a> [deployment\_region](#input\_deployment\_region) | Upwind SaaS Region | `string` | `"us"` | no |
 | <a name="input_external_id"></a> [external\_id](#input\_external\_id) | The external ID for secure cross-account role assumption. | `string` | n/a | yes |
 | <a name="input_iam_role_path"></a> [iam\_role\_path](#input\_iam\_role\_path) | The common IAM path applied to all onboarding IAM roles, policies and instance profiles. Must begin and end with a forward slash (/). | `string` | `"/"` | no |
 | <a name="input_install_roles_in_management_account"></a> [install\_roles\_in\_management\_account](#input\_install\_roles\_in\_management\_account) | Install the additional roles in the management account - if required. | `bool` | `false` | no |
 | <a name="input_is_saas"></a> [is\_saas](#input\_is\_saas) | When true, configures the module for Upwind SaaS-managed CloudScanner deployment. In SaaS mode the CloudScanner admin role and credentials secret are not created; instead a customer assume role is created that the Upwind SaaS account can assume. | `bool` | `false` | no |
+| <a name="input_is_virtual_organization"></a> [is\_virtual\_organization](#input\_is\_virtual\_organization) | Enable virtual organization deployment mode | `bool` | `false` | no |
 | <a name="input_management_account_id"></a> [management\_account\_id](#input\_management\_account\_id) | The account ID of the AWS Organization management account. The Org discover role will be created in this account. | `string` | n/a | yes |
 | <a name="input_orchestrator_account_id"></a> [orchestrator\_account\_id](#input\_orchestrator\_account\_id) | The account ID of the Upwind orchestrator account. If specified, certain roles will only be created in this account to maintain operational security and control. | `string` | `null` | no |
 | <a name="input_organization_role_name"></a> [organization\_role\_name](#input\_organization\_role\_name) | The base name of the IAM role to be created, used for account discovery within the AWS Org. | `string` | `"UpwindOrganizationServiceRole"` | no |
-| <a name="input_organization_role_permissions_boundary"></a> [organization\_role\_permissions\_boundary](#input\_organization\_role\_permissions\_boundary) | (Optional). Permissions boundary policy (ARN or policy name/path) to attach to the Organization discovery role. | `string` | `null` | no |
+| <a name="input_organization_role_permissions_boundary"></a> [organization\_role\_permissions\_boundary](#input\_organization\_role\_permissions\_boundary) | (Optional). Permissions boundary policy (ARN or policy name/path) to attach to the Org Discovery role. | `string` | `null` | no |
 | <a name="input_role_name_suffix"></a> [role\_name\_suffix](#input\_role\_name\_suffix) | A user specific suffix that will be appended to resources - eg role names. | `string` | `null` | no |
+| <a name="input_single_account_onboarding_role_permissions_boundary"></a> [single\_account\_onboarding\_role\_permissions\_boundary](#input\_single\_account\_onboarding\_role\_permissions\_boundary) | (Optional). Permissions boundary policy (ARN or policy name/path) to attach to the single account onboarding Lambda execution role. | `string` | `null` | no |
 | <a name="input_upwind_agentless_k8s_access_entries_enabled"></a> [upwind\_agentless\_k8s\_access\_entries\_enabled](#input\_upwind\_agentless\_k8s\_access\_entries\_enabled) | Enable the creation of the policy for agentless Kubernetes resource fetching using EKS access entries as the authentication method. | `bool` | `false` | no |
 | <a name="input_upwind_agentless_k8s_account_whitelist"></a> [upwind\_agentless\_k8s\_account\_whitelist](#input\_upwind\_agentless\_k8s\_account\_whitelist) | (Optional). If set, this will limit the accounts in which the agentless Kubernetes access entry and SSM permissions are created. | `list(string)` | `[]` | no |
 | <a name="input_upwind_agentless_k8s_eks_admin_view_policy_enabled"></a> [upwind\_agentless\_k8s\_eks\_admin\_view\_policy\_enabled](#input\_upwind\_agentless\_k8s\_eks\_admin\_view\_policy\_enabled) | Allow the role to associate AmazonEKSAdminViewPolicy (in addition to AmazonEKSViewPolicy) on Upwind-created access entries. Only takes effect when upwind\_agentless\_k8s\_access\_entries\_enabled is true. | `bool` | `true` | no |
 | <a name="input_upwind_agentless_k8s_ssm_enabled"></a> [upwind\_agentless\_k8s\_ssm\_enabled](#input\_upwind\_agentless\_k8s\_ssm\_enabled) | Enable the creation of the policy for agentless Kubernetes resource fetching from private EKS clusters via SSM tunnels. | `bool` | `false` | no |
 | <a name="input_upwind_cfn_bucket"></a> [upwind\_cfn\_bucket](#input\_upwind\_cfn\_bucket) | Hostname of the Upwind S3 bucket that hosts the CloudFormation templates referenced by the account service role policies. | `string` | `"get.upwind.io"` | no |
+| <a name="input_upwind_cloud_organization_id"></a> [upwind\_cloud\_organization\_id](#input\_upwind\_cloud\_organization\_id) | The Cloud Organization ID generated by Upwind (not an AWS organization ID). Required when is\_virtual\_organization = true. | `string` | `null` | no |
 | <a name="input_upwind_cloudscanner_auth_client_id"></a> [upwind\_cloudscanner\_auth\_client\_id](#input\_upwind\_cloudscanner\_auth\_client\_id) | The CloudScanner client ID for Upwind Security authentication. | `string` | `null` | no |
 | <a name="input_upwind_cloudscanner_auth_secret_arn"></a> [upwind\_cloudscanner\_auth\_secret\_arn](#input\_upwind\_cloudscanner\_auth\_secret\_arn) | The ARN of the secret containing the CloudScanner credentials. | `string` | `null` | no |
 | <a name="input_upwind_cloudscanner_auth_secret_value"></a> [upwind\_cloudscanner\_auth\_secret\_value](#input\_upwind\_cloudscanner\_auth\_secret\_value) | The CloudScanner client secret for Upwind Security authentication. | `string` | `null` | no |
 | <a name="input_upwind_cloudscanner_management_enabled"></a> [upwind\_cloudscanner\_management\_enabled](#input\_upwind\_cloudscanner\_management\_enabled) | Enable the permissions necessary to support automated CloudScanner deployment and management. | `bool` | `true` | no |
+| <a name="input_upwind_enable_self_managed_kms_key"></a> [upwind\_enable\_self\_managed\_kms\_key](#input\_upwind\_enable\_self\_managed\_kms\_key) | Enable self managed kms key instead of upwind managed kms key | `bool` | `false` | no |
 | <a name="input_upwind_feature_dspm_account_whitelist"></a> [upwind\_feature\_dspm\_account\_whitelist](#input\_upwind\_feature\_dspm\_account\_whitelist) | (Optional). If set, and given upwind\_feature\_dspm\_enabled is true, this will limit the accounts that we create the DSPM S3 permissions in | `list(string)` | `[]` | no |
 | <a name="input_upwind_feature_dspm_enabled"></a> [upwind\_feature\_dspm\_enabled](#input\_upwind\_feature\_dspm\_enabled) | Enable the creation of roles to enable DSPM scanning. This includes permissions to access the the contents of S3 buckets. | `bool` | `true` | no |
+| <a name="input_upwind_feature_dspm_rds_account_allowlist"></a> [upwind\_feature\_dspm\_rds\_account\_allowlist](#input\_upwind\_feature\_dspm\_rds\_account\_allowlist) | (Optional). If set, and given upwind\_feature\_dspm\_rds\_enabled is true, this limits the accounts that we create the DSPM RDS permissions in. | `list(string)` | `[]` | no |
+| <a name="input_upwind_feature_dspm_rds_enabled"></a> [upwind\_feature\_dspm\_rds\_enabled](#input\_upwind\_feature\_dspm\_rds\_enabled) | Enable DSPM scanning of RDS databases. This includes the permissions required to snapshot and restore RDS databases so their contents can be scanned. | `bool` | `false` | no |
 | <a name="input_upwind_include_ec2_network_management_permissions"></a> [upwind\_include\_ec2\_network\_management\_permissions](#input\_upwind\_include\_ec2\_network\_management\_permissions) | Include permissions necessary to create and manage EC2 network resources. | `bool` | `true` | no |
+| <a name="input_upwind_serverless_bucket_prefix"></a> [upwind\_serverless\_bucket\_prefix](#input\_upwind\_serverless\_bucket\_prefix) | Bucket that stores the single account onboarding lambda only used for upwind managed orgs | `string` | `"upwind-serverless-functions"` | no |
+| <a name="input_upwind_single_account_onboarding_lambda_enabled"></a> [upwind\_single\_account\_onboarding\_lambda\_enabled](#input\_upwind\_single\_account\_onboarding\_lambda\_enabled) | Whether to create the single account onboarding Lambda (and its supporting IAM role, secret and log group). Only applies when is\_virtual\_organization = true. | `bool` | `true` | no |
 | <a name="input_upwind_trusted_account_id"></a> [upwind\_trusted\_account\_id](#input\_upwind\_trusted\_account\_id) | The identifier of the trusted account used for IAM cross-account access. | `string` | `"340457201789"` | no |
 ## Resources
 
 | Name | Type |
-|------|------|
+| ---- | ---- |
+| [aws_iam_policy.cloudscanner_dspm_rds](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy) | resource |
+| [aws_iam_policy.cloudscanner_dspm_rds_vpc_access](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy) | resource |
+| [aws_iam_role_policy_attachment.cloudscanner_admin_role_dspm_rds](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
+| [aws_iam_role_policy_attachment.cloudscanner_admin_role_dspm_rds_vpc_access](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
+| [aws_iam_role_policy_attachment.cloudscanner_execution_role_dspm_rds](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
 | [null_resource.validate_cloudscanner_auth](https://registry.terraform.io/providers/hashicorp/null/latest/docs/resources/resource) | resource |
 | [null_resource.validate_management_account](https://registry.terraform.io/providers/hashicorp/null/latest/docs/resources/resource) | resource |
 | [null_resource.validate_saas_config](https://registry.terraform.io/providers/hashicorp/null/latest/docs/resources/resource) | resource |
+| [null_resource.validate_virtual_organization](https://registry.terraform.io/providers/hashicorp/null/latest/docs/resources/resource) | resource |
 | [aws_caller_identity.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/caller_identity) | data source |
+| [aws_partition.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/partition) | data source |
 <!-- END_TF_DOCS -->
