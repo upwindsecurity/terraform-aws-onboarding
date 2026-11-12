@@ -48,6 +48,9 @@ locals {
   condition_is_saas_mode                = var.is_saas
   condition_create_customer_assume_role = local.condition_is_saas_mode && local.condition_is_orchestrator_account
 
+  # The single account onboarding Lambda is only relevant for Upwind managed organizations, and can be opted out of
+  condition_create_single_account_onboarding_lambda = var.is_upwind_managed_organization && var.upwind_single_account_onboarding_lambda_enabled
+
   # DSPM RDS scanning enablement (mirrors the execution-role module): the feature flag gated by an optional
   # per-account allowlist. Drives the shared DSPM RDS managed policy and its role attachments.
   dspm_rds_account_allowed = (
@@ -107,5 +110,10 @@ locals {
   condition_cloudscanner_invalid_both_provided = (
     local.condition_cloudscanner_use_arn &&
     local.condition_cloudscanner_use_inline
+  )
+
+  condition_create_secret_for_single_account_onboarding = (
+    local.condition_cloudscanner_use_inline &&
+    local.condition_create_single_account_onboarding_lambda
   )
 }

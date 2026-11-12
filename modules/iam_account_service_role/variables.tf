@@ -282,7 +282,7 @@ variable "iam_role_path" {
   type        = string
   default     = "/"
 }
-variable "is_virtual_organization" {
+variable "is_upwind_managed_organization" {
   description = "Enable virtual organization deployment mode"
   type        = bool
   default     = false
