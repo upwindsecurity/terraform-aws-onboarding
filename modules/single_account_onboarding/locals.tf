@@ -58,7 +58,7 @@ locals {
 
   role_name     = var.role_name_suffix != "" ? join("-", [var.upwind_lambda_execution_role_name, var.role_name_suffix]) : var.upwind_lambda_execution_role_name
   function_name = var.role_name_suffix != "" ? join("-", [var.upwind_onboarding_lambda_name_prefix, var.role_name_suffix]) : var.upwind_onboarding_lambda_name_prefix
-  function_arn  = "arn:${data.aws_partition.this.partition}:lambda:${data.aws_region.this.region}:${data.aws_caller_identity.this.account_id}:function:${local.function_name}"
-  s3_bucket     = join("-", [trimsuffix(var.upwind_serverless_bucket_prefix, "-"), data.aws_region.this.region])
+  function_arn  = "arn:${data.aws_partition.this.partition}:lambda:${data.aws_region.this.name}:${data.aws_caller_identity.this.account_id}:function:${local.function_name}"
+  s3_bucket     = join("-", [trimsuffix(var.upwind_serverless_bucket_prefix, "-"), data.aws_region.this.name])
   s3_key        = "single-account-onboarding/single-account-onboarding.zip"
 }
