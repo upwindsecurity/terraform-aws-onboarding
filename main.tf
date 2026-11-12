@@ -547,14 +547,5 @@ resource "null_resource" "validate_virtual_organization" {
       )
       error_message = "Single account onboarding: provide either upwind_cloudscanner_auth_secret_arn OR upwind_cloudscanner_auth_client_id/upwind_cloudscanner_auth_secret_value, not both."
     }
-    # The onboarding Lambda needs a secret ARN: either the one created from inline credentials or a provided one
-    precondition {
-      condition = (
-        !local.condition_create_single_account_onboarding_lambda ||
-        local.condition_create_secret_for_single_account_onboarding ||
-        local.condition_cloudscanner_use_arn
-      )
-      error_message = "Single account onboarding: no credentials secret could be resolved. Provide upwind_cloudscanner_auth_secret_arn, or both upwind_cloudscanner_auth_client_id and upwind_cloudscanner_auth_secret_value."
-    }
   }
 }
