@@ -6,6 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [4.11.0](https://github.com/upwindsecurity/terraform-aws-onboarding/compare/v4.10.0...v4.11.0) (2026-11-12)
+
+### Features
+
+* add support for virtual organization onboarding with updated module and example configurations ([85e9f98](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/85e9f986871b569787cfef01ec1dc7d34f8068e9))
+* **UP-13616:** add single account onboarding module ([da91d85](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/da91d857986be5e4fbcb2b077b893f9b5f09a69b))
+
+### Bug Fixes
+
+* correct s3_bucket region reference in single account onboarding module ([3e8f96b](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/3e8f96b19c537c2ef1b64380629065fb492ac1da))
+* downgrade AWS provider version and update Lambda runtime to Python 3.13 ([420f448](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/420f448f17fb014463ed556abdafe5e1cdf74801))
+* remove precondition checks for onboarding Lambda secret ARN in single account onboarding ([b7fb20c](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/b7fb20c7203f2df09ec46fe5dbfff360c3d29800))
+* update AWS region reference in function ARN and S3 bucket name ([e207eb3](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/e207eb3261555a964eb406585e69fe92acbb3893))
+* update cloud_organization_id to be non-nullable and adjust AWS provider version ([b6f59c0](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/b6f59c0842b5aec0a1dfd242ced8ff7ac83fcb2a))
+* update CloudScanner secret creation logic and enhance variable validation for single account onboarding ([7145cc4](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/7145cc419912046b7fbf099de0efaca2881aea90))
+* update deployment region options to include 'au' instead of 'me' ([d1497bb](https://github.com/upwindsecurity/terraform-aws-onboarding/commit/d1497bb3f46f2f083b5378efe5075041fb9e88a2))
+
 ## [4.10.0](https://github.com/upwindsecurity/terraform-aws-onboarding/compare/v4.9.1...v4.10.0) (2026-11-11)
 
 ### Features

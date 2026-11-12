@@ -4,7 +4,7 @@ data "aws_caller_identity" "this" {}
 
 locals {
   # The upwind_version is stamped by scripts/inject-version.sh as part of the release process.
-  upwind_version = "TF-4.9.1"
+  upwind_version = "TF-4.11.0"
 
   tags = merge(
     var.custom_tags,
