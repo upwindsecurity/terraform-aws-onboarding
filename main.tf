@@ -6,7 +6,7 @@ data "aws_partition" "current" {}
 
 # The Org discovery only needs to be created in the management account
 module "org_discovery_role" {
-  count = local.condition_is_management_account && !var.is_upwind_managed_organization ? 1 : 0
+  count = local.condition_is_management_account && !var.is_virtual_organization ? 1 : 0
 
   source = "./modules/iam_org_discovery_role"
 
@@ -81,7 +81,7 @@ module "account_service_role" {
   cloudscanner_saas_customer_assume_role_name = local.condition_create_customer_assume_role ? local.cloudscanner_saas_customer_assume_role_name : null
   permissions_boundary                        = var.account_service_role_permissions_boundary
   upwind_enable_self_managed_kms_key          = var.upwind_enable_self_managed_kms_key
-  is_upwind_managed_organization              = var.is_upwind_managed_organization
+  is_virtual_organization                     = var.is_virtual_organization
   orchestrator_account_id                     = var.orchestrator_account_id
 }
 
@@ -513,12 +513,12 @@ resource "null_resource" "validate_saas_config" {
 }
 
 resource "null_resource" "validate_virtual_organization" {
-  count = var.is_upwind_managed_organization ? 1 : 0
+  count = var.is_virtual_organization ? 1 : 0
 
   lifecycle {
     precondition {
       condition     = !local.condition_create_single_account_onboarding_lambda || (var.upwind_cloud_organization_id != null && var.upwind_cloud_organization_id != "")
-      error_message = "upwind_cloud_organization_id is required when is_upwind_managed_organization = true and upwind_single_account_onboarding_lambda_enabled = true."
+      error_message = "upwind_cloud_organization_id is required when is_virtual_organization = true and upwind_single_account_onboarding_lambda_enabled = true."
     }
     precondition {
       condition     = local.condition_cloudscanner_has_any_secret_config || !local.condition_create_single_account_onboarding_lambda

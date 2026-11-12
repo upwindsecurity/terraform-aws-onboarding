@@ -54,7 +54,7 @@ resource "aws_iam_role" "account_service_role" {
     # If the role is being created with elevated permissions (non-SaaS orchestrator account),
     # add tags for CloudScanner Discovery.    # If the role is being created with elevated permissions, we will add the additional tags needed for
     # CloudScanner Discovery
-    var.apply_for_orchestrator_account || var.is_upwind_managed_organization ? {
+    var.apply_for_orchestrator_account || var.is_virtual_organization ? {
       # The role-name discovery tags embed the IAM path so CloudScanner reconstructs the correct ARN.
       "upwind:aws:CloudScannerAdministrationRoleName" = "${local.role_name_path_prefix}${var.cloudscanner_admin_role_name}"
       "upwind:aws:CloudScannerExecutionRoleName"      = "${local.role_name_path_prefix}${var.cloudscanner_execution_role_name}"
@@ -78,7 +78,7 @@ resource "aws_iam_role" "account_service_role" {
     },
     # In the case of virtual organizations we need to create add these tags regardless of whether it is just for the orchestrator account
     # as the account service role is used for the initial onboarding process instead of the org discovery role.
-    var.is_upwind_managed_organization ?
+    var.is_virtual_organization ?
     var.orchestrator_account_id != "" ?
     {
       "upwind:aws:HasCSAutomationPermissions" = var.upwind_cloudscanner_management_enabled ? "Yes" : "No"
