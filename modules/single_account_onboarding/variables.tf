@@ -13,8 +13,8 @@ variable "deployment_region" {
   description = "Upwind SaaS region the account is onboarded to. Selects the Upwind auth and API endpoints."
   type        = string
   validation {
-    condition     = contains(["us", "eu", "ap", "me", "dev"], var.deployment_region)
-    error_message = "deployment_region must be one of us, eu, ap, me, dev."
+    condition     = contains(["us", "eu", "ap", "au", "dev"], var.deployment_region)
+    error_message = "deployment_region must be one of us, eu, ap, au, dev."
   }
 }
 

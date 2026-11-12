@@ -40,10 +40,10 @@ locals {
       api_url       = "https://integration.ap.upwind.io/api/v1"
       auth_audience = "https://agent.ap.upwind.io"
     }
-    me = {
-      auth_url      = "https://oauth.me.upwind.io/oauth/token"
-      api_url       = "https://integration.me.upwind.io/api/v1"
-      auth_audience = "https://agent.me.upwind.io"
+    au = {
+      auth_url      = "https://oauth.au.upwind.io/oauth/token"
+      api_url       = "https://integration.au.upwind.io/api/v1"
+      auth_audience = "https://agent.au.upwind.io"
     }
     dev = {
       auth_url      = "https://oauth.upwind.dev/oauth/token"
