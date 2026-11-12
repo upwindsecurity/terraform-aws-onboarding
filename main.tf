@@ -385,7 +385,8 @@ resource "aws_iam_role_policy_attachment" "cloudscanner_admin_role_dspm_rds_vpc_
   policy_arn = aws_iam_policy.cloudscanner_dspm_rds_vpc_access[0].arn
 }
 
-# Create the CloudScanner secret in the orchestrator account if not using a provided ARN.
+# Create the CloudScanner secret in the orchestrator account or 
+# in target account if using single account onboarding lambda if not using a provided ARN.
 # If the orchestrator account is the management account, only create the secret if the install roles
 # has been configured
 module "cloudscanner_secret" {
@@ -421,14 +422,19 @@ module "single_account_onboarding" {
 
   source = "./modules/single_account_onboarding"
 
-  cloud_organization_id                = var.upwind_cloud_organization_id
-  upwind_serverless_bucket_prefix      = var.upwind_serverless_bucket_prefix
-  deployment_region                    = var.deployment_region
-  role_name_suffix                     = var.role_name_suffix != null ? var.role_name_suffix : ""
-  iam_role_path                        = var.iam_role_path
-  permissions_boundary                 = var.single_account_onboarding_role_permissions_boundary
-  custom_tags                          = var.custom_tags
-  upwind_client_credentials_secret_arn = coalesce(one(module.cloudscanner_secret[*].secret.arn), var.upwind_cloudscanner_auth_secret_arn)
+  cloud_organization_id           = var.upwind_cloud_organization_id
+  upwind_serverless_bucket_prefix = var.upwind_serverless_bucket_prefix
+  deployment_region               = var.deployment_region
+  role_name_suffix                = var.role_name_suffix != null ? var.role_name_suffix : ""
+  iam_role_path                   = var.iam_role_path
+  permissions_boundary            = var.single_account_onboarding_role_permissions_boundary
+  custom_tags                     = var.custom_tags
+  # try() turns coalesce's "no non-null arguments" error into null, so the
+  # validate_virtual_organization preconditions report the missing credentials instead.
+  upwind_client_credentials_secret_arn = try(coalesce(one(module.cloudscanner_secret[*].secret.arn), var.upwind_cloudscanner_auth_secret_arn), null)
+
+  # Run the virtual organization preconditions before any resource in this module is planned.
+  depends_on = [null_resource.validate_virtual_organization]
 }
 
 # Using a null resource so that we can avail of the precondition rules to
@@ -540,6 +546,15 @@ resource "null_resource" "validate_virtual_organization" {
         !local.condition_cloudscanner_invalid_both_provided
       )
       error_message = "Single account onboarding: provide either upwind_cloudscanner_auth_secret_arn OR upwind_cloudscanner_auth_client_id/upwind_cloudscanner_auth_secret_value, not both."
+    }
+    # The onboarding Lambda needs a secret ARN: either the one created from inline credentials or a provided one
+    precondition {
+      condition = (
+        !local.condition_create_single_account_onboarding_lambda ||
+        local.condition_create_secret_for_single_account_onboarding ||
+        local.condition_cloudscanner_use_arn
+      )
+      error_message = "Single account onboarding: no credentials secret could be resolved. Provide upwind_cloudscanner_auth_secret_arn, or both upwind_cloudscanner_auth_client_id and upwind_cloudscanner_auth_secret_value."
     }
   }
 }
