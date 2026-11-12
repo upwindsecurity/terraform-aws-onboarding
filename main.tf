@@ -385,11 +385,12 @@ resource "aws_iam_role_policy_attachment" "cloudscanner_admin_role_dspm_rds_vpc_
   policy_arn = aws_iam_policy.cloudscanner_dspm_rds_vpc_access[0].arn
 }
 
-# Create the CloudScanner secret in the orchestrator account if not using a provided ARN.
+# Create the CloudScanner secret in the orchestrator account or 
+# in target account if using single account onboarding lambda if not using a provided ARN.
 # If the orchestrator account is the management account, only create the secret if the install roles
 # has been configured
 module "cloudscanner_secret" {
-  count = local.condition_create_cloudscanner_secret ? 1 : 0
+  count = local.condition_create_cloudscanner_secret || local.condition_create_secret_for_single_account_onboarding ? 1 : 0
 
   source = "./modules/cloudscanner_auth_secret"
 
@@ -412,6 +413,28 @@ module "cloudscanner_saas_customer_assume_role" {
   external_id                      = var.external_id
   cloudscanner_execution_role_name = local.cloudscanner_execution_role_name
   custom_tags                      = var.custom_tags
+}
+
+# For virtual organizations, each account onboards itself: a one-shot Lambda registers the account
+# with Upwind using the client credentials stored in the secret created by this module.
+module "single_account_onboarding" {
+  count = local.condition_create_single_account_onboarding_lambda ? 1 : 0
+
+  source = "./modules/single_account_onboarding"
+
+  cloud_organization_id           = var.upwind_cloud_organization_id
+  upwind_serverless_bucket_prefix = var.upwind_serverless_bucket_prefix
+  deployment_region               = var.deployment_region
+  role_name_suffix                = var.role_name_suffix != null ? var.role_name_suffix : ""
+  iam_role_path                   = var.iam_role_path
+  permissions_boundary            = var.single_account_onboarding_role_permissions_boundary
+  custom_tags                     = var.custom_tags
+  # try() turns coalesce's "no non-null arguments" error into null, so the
+  # validate_virtual_organization preconditions report the missing credentials instead.
+  upwind_client_credentials_secret_arn = try(coalesce(one(module.cloudscanner_secret[*].secret.arn), var.upwind_cloudscanner_auth_secret_arn), null)
+
+  # Run the virtual organization preconditions before any resource in this module is planned.
+  depends_on = [null_resource.validate_virtual_organization]
 }
 
 # Using a null resource so that we can avail of the precondition rules to
@@ -495,3 +518,34 @@ resource "null_resource" "validate_saas_config" {
   }
 }
 
+resource "null_resource" "validate_virtual_organization" {
+  count = var.is_virtual_organization ? 1 : 0
+
+  lifecycle {
+    precondition {
+      condition     = !local.condition_create_single_account_onboarding_lambda || (var.upwind_cloud_organization_id != null && var.upwind_cloud_organization_id != "")
+      error_message = "upwind_cloud_organization_id is required when is_virtual_organization = true and upwind_single_account_onboarding_lambda_enabled = true."
+    }
+    precondition {
+      condition     = local.condition_cloudscanner_has_any_secret_config || !local.condition_create_single_account_onboarding_lambda
+      error_message = "upwind_cloudscanner_auth_secret_arn or upwind_cloudscanner_auth_client_id and upwind_cloudscanner_auth_secret_value are required when upwind_single_account_onboarding_lambda_enabled = true"
+    }
+    # Prevent partial inline credentials ONLY when not using ARN
+    precondition {
+      condition = (
+        !local.condition_create_single_account_onboarding_lambda ||
+        local.condition_cloudscanner_use_arn ||
+        !local.condition_cloudscanner_partial_inline
+      )
+      error_message = "Single account onboarding: both upwind_cloudscanner_auth_client_id and upwind_cloudscanner_auth_secret_value must be provided together."
+    }
+    # Cannot provide both ARN and inline credentials
+    precondition {
+      condition = (
+        !local.condition_create_single_account_onboarding_lambda ||
+        !local.condition_cloudscanner_invalid_both_provided
+      )
+      error_message = "Single account onboarding: provide either upwind_cloudscanner_auth_secret_arn OR upwind_cloudscanner_auth_client_id/upwind_cloudscanner_auth_secret_value, not both."
+    }
+  }
+}
