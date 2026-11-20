@@ -260,14 +260,6 @@ resource "aws_iam_role_policy" "account_service_view_access_policy" {
           Resource = "*"
         },
         {
-          Sid    = "AccessSecurityHub"
-          Effect = "Allow"
-          Action = [
-            "securityhub:BatchImportFindings"
-          ]
-          Resource = "*"
-        },
-        {
           Sid    = "AccessIdentityStoreAuth"
           Effect = "Allow"
           Action = [
@@ -1657,4 +1649,26 @@ resource "aws_iam_role_policy_attachment" "attach_agentless_k8s_ssm_access_polic
 
   role       = aws_iam_role.account_service_role.name
   policy_arn = one(aws_iam_policy.account_service_agentless_k8s_ssm_access_policy[*].arn)
+}
+
+
+resource "aws_iam_role_policy" "securityhub_integration" {
+  count = var.enable_securityhub_integration ? 1 : 0
+  name  = "SecurityHubFindingsImportPolicy"
+  role  = aws_iam_role.account_service_role.name
+  policy = jsonencode(
+    {
+      Version = "2012-10-17"
+      Statement = [
+        {
+          Sid    = "SecurityHubFindingsImportPolicy"
+          Effect = "Allow"
+          Action = [
+            "securityhub:BatchImportFindings"
+          ]
+          Resource = "*"
+        }
+      ]
+    }
+  )
 }

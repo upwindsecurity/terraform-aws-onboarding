@@ -505,3 +505,9 @@ variable "deployment_region" {
     error_message = "deployment_region must be one of us, eu, ap, au, dev."
   }
 }
+
+variable "enable_securityhub_integration" {
+  type        = bool
+  default     = false
+  description = "Enable SecurityHub integration (adds securityhub:BatchImportFindings to Account Service roles)"
+}
