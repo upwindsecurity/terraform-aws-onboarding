@@ -293,3 +293,9 @@ variable "orchestrator_account_id" {
   type        = string
   default     = ""
 }
+
+variable "enable_securityhub_integration" {
+  type        = bool
+  default     = false
+  description = "Enable SecurityHub integration (adds securityhub:BatchImportFindings to Account Service roles)"
+}
