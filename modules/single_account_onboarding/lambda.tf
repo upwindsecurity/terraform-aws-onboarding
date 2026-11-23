@@ -2,7 +2,7 @@ resource "aws_lambda_function" "single_account_onboarding" {
   function_name = local.function_name
   role          = aws_iam_role.lambda_execution_role.arn
   handler       = "upwind_single_account_onboard.lambda_handler"
-  runtime       = "python3.13"
+  runtime       = "python3.14"
   s3_bucket     = local.s3_bucket
   s3_key        = local.s3_key
 

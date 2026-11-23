@@ -58,7 +58,7 @@ resource "aws_iam_role" "account_service_role" {
       # The role-name discovery tags embed the IAM path so CloudScanner reconstructs the correct ARN.
       "upwind:aws:CloudScannerAdministrationRoleName" = "${local.role_name_path_prefix}${var.cloudscanner_admin_role_name}"
       "upwind:aws:CloudScannerExecutionRoleName"      = "${local.role_name_path_prefix}${var.cloudscanner_execution_role_name}"
-      "upwind:aws:CloudScannerInstallRegion"          = data.aws_region.current.name
+      "upwind:aws:CloudScannerInstallRegion"          = data.aws_region.current.region
       "upwind:aws:CloudScannerSecretARN"              = var.cloudscanner_secret_arn
       "upwind:aws:HasDSPMPermissions"                 = var.upwind_feature_dspm_enabled ? "Yes" : "No"
       "upwind:aws:HasDSPMRDSPermissions"              = var.upwind_feature_dspm_rds_enabled ? "Yes" : "No"
