@@ -467,7 +467,10 @@ resource "aws_iam_policy" "account_service_cloudformation_access_policy" {
             # Restricting S3 Access to the Upwind publishing account
             "aws:ResourceAccount" = local.partition.publishing_account
           }
-          "ForAnyValue:StringEquals" = { "aws:CalledVia" = "cloudformation.${data.aws_partition.current.dns_suffix}" }
+          "ForAnyValue:StringEquals" = {
+            # Cloudformation URL is not partition
+            "aws:CalledVia" = "cloudformation.amazonaws.com"
+          }
         }
       }
     ]
@@ -1099,7 +1102,10 @@ resource "aws_iam_policy" "account_service_cloudscanner_access_policy" {
               # Restricting S3 Access to the Upwind publishing account
               "aws:ResourceAccount" = local.partition.publishing_account
             }
-            "ForAnyValue:StringEquals" = { "aws:CalledVia" = "cloudformation.${data.aws_partition.current.dns_suffix}" }
+            "ForAnyValue:StringEquals" = {
+              # Cloudformation URL is not partition
+              "aws:CalledVia" = "cloudformation.amazonaws.com"
+            }
           }
         },
         # Permissions to manage CloudWatch Events.

@@ -38,6 +38,7 @@ module "account_service_role" {
   trusted_account_id               = local.upwind_trusted_account_id
   external_id                      = var.external_id
   iam_role_path                    = var.iam_role_path
+  upwind_dev_environment           = var.upwind_dev_environment
   upwind_cfn_bucket                = var.upwind_cfn_bucket
   account_service_role_name        = local.account_service_role_name
   cloudscanner_admin_role_name     = local.cloudscanner_admin_role_name
@@ -95,6 +96,7 @@ module "cloudscanner_admin_role" {
   source = "./modules/iam_cloudscanner_admin_role"
 
   iam_role_path                        = var.iam_role_path
+  upwind_dev_environment               = var.upwind_dev_environment
   cloudscanner_admin_role_name         = local.cloudscanner_admin_role_name
   cloudscanner_admin_role_profile_name = local.cloudscanner_admin_role_profile_name
   cloudscanner_execution_role_name     = local.cloudscanner_execution_role_name
@@ -669,6 +671,10 @@ resource "null_resource" "validate_saas_config" {
     precondition {
       condition     = !local.condition_is_saas_mode || var.orchestrator_account_id != null
       error_message = "orchestrator_account_id is required when is_saas = true."
+    }
+    precondition {
+      condition     = !local.condition_is_saas_mode || var.cloudscanner_saas_trusted_account_id != null
+      error_message = "cloudscanner_saas_trusted_account_id (the Upwind SaaS account ID) is required when is_saas = true."
     }
   }
 }

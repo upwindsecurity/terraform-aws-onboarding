@@ -1,7 +1,6 @@
 locals {
-  # The upwind_version is defined as part of the release management and is used for version identification.
-  # It must be maintained.
-  upwind_version = "TF-3.0.1"
+  # The upwind_version is stamped by scripts/inject-version.sh as part of the release process (the registry version).
+  upwind_version = "TF-4.12.0"
 
   # The upwind_trust_arn is included in the trusted identity of roles which can be assumed by the Upwind SaaS.
   # Upwind's account for the partition being deployed to, unless upwind_trusted_account_id overrides it.
@@ -80,8 +79,8 @@ locals {
   )
   dspm_rds_enabled = var.upwind_feature_dspm_rds_enabled && local.dspm_rds_account_allowed
 
-  # Default the SaaS trusted account to the general Upwind trusted account if not explicitly set.
-  saas_trusted_account_id = coalesce(var.cloudscanner_saas_trusted_account_id, local.upwind_trusted_account_id)
+  # The Upwind SaaS account: required in SaaS mode (see null_resource.validate_saas_config).
+  saas_trusted_account_id = var.cloudscanner_saas_trusted_account_id
 
   # Condition to determine if CloudScanner secret should be created: wherever the admin role is, unless an ARN
   # was given. Not created in the default orchestrator account in SaaS mode (Upwind manages its credentials).

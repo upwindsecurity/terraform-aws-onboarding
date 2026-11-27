@@ -1,3 +1,9 @@
+variable "upwind_dev_environment" {
+  description = "Use the Upwind dev environment's values for the partition instead of production."
+  type        = bool
+  default     = false
+}
+
 variable "cloudscanner_admin_role_name" {
   description = "The name to be used for the CloudScanner admin role."
   type        = string

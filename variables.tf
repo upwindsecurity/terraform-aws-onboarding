@@ -1,6 +1,13 @@
+variable "upwind_dev_environment" {
+  # For the majority of use cases this should be left as the default.
+  description = "Deploy for the Upwind dev environment: the trusted account and template buckets default to the dev environment's for the AWS partition being deployed to, instead of production."
+  type        = bool
+  default     = false
+}
+
 variable "upwind_trusted_account_id" {
   # For the majority of use cases this should be left as the default.
-  description = "The account id to be configured as the trusted principal: the account Upwind will assume the roles from. Defaults to Upwind's account for the AWS partition being deployed to."
+  description = "The account id to be configured as the trusted principal: the account Upwind will assume the roles from. Defaults to Upwind's account for the AWS partition (and environment, see upwind_dev_environment) being deployed to."
   type        = string
   default     = null
   validation {
@@ -10,10 +17,9 @@ variable "upwind_trusted_account_id" {
 }
 
 variable "upwind_cfn_bucket" {
-  # For the majority of use cases this should be left as the default. Non-production
-  # Upwind environments host their CloudFormation templates on a different bucket
-  # (e.g. get.upwind.dev).
-  description = "Optional. The Upwind S3 bucket hosting the CloudFormation templates the account service role policies allow. Defaults to Upwind's bucket for the AWS partition being deployed to."
+  # For the majority of use cases this should be left as the default; for the Upwind dev
+  # environment set upwind_dev_environment instead.
+  description = "Optional. The Upwind S3 bucket hosting the CloudFormation templates the account service role policies allow. Defaults to Upwind's bucket for the AWS partition (and environment, see upwind_dev_environment) being deployed to."
   type        = string
   default     = null
 
@@ -432,7 +438,7 @@ variable "is_saas" {
 }
 
 variable "cloudscanner_saas_trusted_account_id" {
-  description = "The account ID that will be configured as the trust principal for the Customer Assume role when deploying with CloudScanner SaaS."
+  description = "The Upwind SaaS account ID that will be configured as the trust principal for the Customer Assume role. Required when deploying with CloudScanner SaaS."
   type        = string
   default     = null
 

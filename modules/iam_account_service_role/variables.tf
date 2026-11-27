@@ -18,8 +18,14 @@ variable "external_id" {
   }
 }
 
+variable "upwind_dev_environment" {
+  description = "Use the Upwind dev environment's values for the partition instead of production."
+  type        = bool
+  default     = false
+}
+
 variable "upwind_cfn_bucket" {
-  description = "Optional. The Upwind S3 bucket hosting the CloudFormation templates this role's policies allow, replacing the partition's (non-production Upwind environments)."
+  description = "Optional. The Upwind S3 bucket hosting the CloudFormation templates this role's policies allow, replacing the partition's."
   type        = string
   default     = null
 }
