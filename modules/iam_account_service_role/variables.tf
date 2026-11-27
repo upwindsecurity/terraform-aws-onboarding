@@ -1,6 +1,11 @@
-variable "trusted_arn" {
-  description = "The ARN of the upwind account to be used in the trusted entity of the role."
+variable "trusted_account_id" {
+  description = "The Upwind account trusted to assume the role."
   type        = string
+
+  validation {
+    condition     = can(regex("^[0-9]{12}$", var.trusted_account_id))
+    error_message = "trusted_account_id must be a 12-digit AWS account ID."
+  }
 }
 
 variable "external_id" {
@@ -14,8 +19,9 @@ variable "external_id" {
 }
 
 variable "upwind_cfn_bucket" {
-  description = "Hostname of the Upwind S3 bucket that hosts the CloudFormation templates referenced by this role's policies."
+  description = "Optional. The Upwind S3 bucket hosting the CloudFormation templates this role's policies allow, replacing the partition's (non-production Upwind environments)."
   type        = string
+  default     = null
 }
 
 variable "account_service_role_name" {
@@ -195,6 +201,20 @@ variable "upwind_feature_dspm_rds_enabled" {
   type        = bool
 }
 
+variable "upwind_feature_dspm_account_whitelist" {
+  description = "(Optional). If set, DSPM is only treated as enabled in the listed accounts (requires current_account_id)."
+  type        = list(string)
+  default     = []
+  nullable    = false
+}
+
+variable "upwind_feature_dspm_rds_account_allowlist" {
+  description = "(Optional). If set, DSPM RDS is only treated as enabled in the listed accounts (requires current_account_id)."
+  type        = list(string)
+  default     = []
+  nullable    = false
+}
+
 variable "upwind_cloudscanner_management_enabled" {
   description = "Enable the permissions necessary to support automated CloudScanner deployment and management."
   type        = bool
@@ -292,6 +312,27 @@ variable "orchestrator_account_id" {
   description = "orchestrator accounts id"
   type        = string
   default     = ""
+}
+
+variable "additional_orchestrator_account_ids" {
+  description = "The additional orchestrator account IDs, alongside the default orchestrator account."
+  type        = list(string)
+  default     = []
+  nullable    = false
+}
+
+variable "role_name_suffix" {
+  description = "The role name suffix (without the leading '-'), added to the onboarding settings parameter path. Empty when none is used."
+  type        = string
+  default     = ""
+  nullable    = false
+}
+
+variable "ssm_parameter_prefix" {
+  description = "The SSM Parameter Store path prefix of the onboarding settings parameter, before any role name suffix."
+  type        = string
+  default     = "/upwind/onboarding/configuration"
+  nullable    = false
 }
 
 variable "enable_securityhub_integration" {

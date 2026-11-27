@@ -1,10 +1,10 @@
 variable "upwind_trusted_account_id" {
   # For the majority of use cases this should be left as the default.
-  description = "The identifier of the trusted account used for IAM cross-account access."
+  description = "The account id to be configured as the trusted principal: the account Upwind will assume the roles from. Defaults to Upwind's account for the AWS partition being deployed to."
   type        = string
-  default     = "340457201789"
+  default     = null
   validation {
-    condition     = can(regex("^[0-9]{12}$", var.upwind_trusted_account_id))
+    condition     = var.upwind_trusted_account_id == null || can(regex("^[0-9]{12}$", var.upwind_trusted_account_id))
     error_message = "The value for the Upwind trusted account id must be a 12-digit AWS account ID."
   }
 }
@@ -13,26 +13,26 @@ variable "upwind_cfn_bucket" {
   # For the majority of use cases this should be left as the default. Non-production
   # Upwind environments host their CloudFormation templates on a different bucket
   # (e.g. get.upwind.dev).
-  description = "Hostname of the Upwind S3 bucket that hosts the CloudFormation templates referenced by the account service role policies."
+  description = "Optional. The Upwind S3 bucket hosting the CloudFormation templates the account service role policies allow. Defaults to Upwind's bucket for the AWS partition being deployed to."
   type        = string
-  default     = "get.upwind.io"
+  default     = null
 
   validation {
-    condition     = length(var.upwind_cfn_bucket) > 0
+    condition     = var.upwind_cfn_bucket == null || length(var.upwind_cfn_bucket) > 0
     error_message = "The Upwind CloudFormation bucket host must not be empty."
   }
 }
 
 variable "external_id" {
   # The external_id is attached to the trusted entities allowing assume-role requests from upwind to be authenticated.
-  description = "The external ID for secure cross-account role assumption."
+  description = "The external ID for secure cross-account role assumption. This is included in the trusted identity of each role that can be assumed from the Upwind SaaS."
   type        = string
 }
 
 variable "orchestrator_account_id" {
   # Additional permissions will be created in the orchestrator account - allowing CloudScanners to be installed. If provided additional roles will also be provided
   # in this account.
-  description = "The account ID of the Upwind orchestrator account. If specified, certain roles will only be created in this account to maintain operational security and control."
+  description = "The account ID of the default Upwind orchestrator account. The orchestrator account is considered a \"special\" account where the CloudScanners will be installed and managed. If specified, additional roles and permissions will be created in this account to allow for the installation and management of the CloudScanners."
   type        = string
   default     = null
 
@@ -43,9 +43,36 @@ variable "orchestrator_account_id" {
   }
 }
 
+variable "additional_orchestrator_account_ids" {
+  # The orchestrator resources (CloudScanner admin role, secret, onboarding settings) are also created in these
+  # accounts, and the CloudScanner execution role in every account trusts their CloudScanner admin role.
+  description = "A list of 12-digit account IDs to treat as additional Upwind orchestrator accounts, alongside the default orchestrator account. The CloudScanners are installed and managed in each orchestrator account. The orchestrator resources are deployed to these accounts, the CloudScanner Execution role in every account trusts their CloudScanner Administration role, and the list is recorded in the onboarding settings and in a tag on the Organization (discovery) role so that Upwind can find them. Leave empty to use only the default orchestrator account."
+  type        = list(string)
+  default     = []
+  nullable    = false
+
+  validation {
+    condition     = alltrue([for id in var.additional_orchestrator_account_ids : can(regex("^[0-9]{12}$", id))])
+    error_message = "Each additional orchestrator account id must be a 12-digit AWS account ID."
+  }
+}
+
+variable "outpost_only_account_ids" {
+  # Only relevant in SaaS mode: the customer assume role is denied the CloudScanner execution role in these accounts.
+  description = "A list of 12-digit account IDs that must not be scanned using CloudScanner SaaS, because they use an Outpost (customer-hosted) CloudScanner deployment. Only relevant when CloudScanner SaaS is enabled: in these accounts the CloudScanner SaaS Customer Assume role is explicitly denied from assuming the CloudScanner Execution role. The list is also recorded in the onboarding settings. It applies to individual accounts only, not to OUs. Leave empty if no accounts are Outpost-only."
+  type        = list(string)
+  default     = []
+  nullable    = false
+
+  validation {
+    condition     = alltrue([for id in var.outpost_only_account_ids : can(regex("^[0-9]{12}$", id))])
+    error_message = "Each Outpost-only account id must be a 12-digit AWS account ID."
+  }
+}
+
 variable "management_account_id" {
   # The Organization discovery role will be created in the management account.
-  description = "The account ID of the AWS Organization management account. The Org discover role will be created in this account."
+  description = "The account ID of the AWS Organization management account. The Org Discovery role will be created in this account."
   type        = string
 
   # If the orchestrator account id role is set it must be a valid account id
@@ -58,13 +85,13 @@ variable "management_account_id" {
 variable "install_roles_in_management_account" {
   # Enabling this option will install additional roles in the management account which allows that account to be scanned if required.
   # It would also allow the management account to be used as the orchestrator account if the same account is selected.
-  description = "Install the additional roles in the management account - if required."
+  description = "Controls whether roles, in addition to the Org Discovery role, are created in the management account. If disabled, Upwind is unable to perform audits or scans in the Org Management account."
   type        = bool
   default     = false
 }
 
 variable "organization_role_name" {
-  description = "The base name of the IAM role to be created, used for account discovery within the AWS Org."
+  description = "The name to be given to the Org Discovery IAM role. The Org Discovery role is created in the management account and grants permissions to discover the Organization account structure."
   type        = string
   default     = "UpwindOrganizationServiceRole"
 
@@ -77,7 +104,7 @@ variable "organization_role_name" {
 }
 
 variable "account_service_role_name" {
-  description = "The base name of the IAM role to be created, used for security auditing purposes."
+  description = "The name to be given to the Account Service IAM role. The Account Service role is created in each account to be connected and is generally used for account auditing purposes."
   type        = string
   default     = "UpwindAccountServiceRole"
 
@@ -90,7 +117,7 @@ variable "account_service_role_name" {
 }
 
 variable "account_service_cloudformation_policy_name" {
-  description = "The base name to be used for the Cloudformation policy name in the account service role."
+  description = "The base name to be used when creating the CloudFormation Policy for the Account Service role."
   type        = string
   default     = "UpwindAccountServiceCloudFormationPolicy"
 
@@ -103,7 +130,7 @@ variable "account_service_cloudformation_policy_name" {
 }
 
 variable "account_service_cloudscanner_ec2_policy_name" {
-  description = "The base name to be used for the CloudScanner EC2 policy name in the account service role."
+  description = "The base name to be used when creating the CloudScanner EC2 Access Policy for the Account Service role."
   type        = string
   default     = "UpwindAccountServiceCloudScannerEC2Policy"
 
@@ -115,7 +142,7 @@ variable "account_service_cloudscanner_ec2_policy_name" {
 }
 
 variable "account_service_cloudscanner_policy_name" {
-  description = "The base name to be used for the CloudScanner policy name in the account service role."
+  description = "The base name to be used when creating the CloudScanner Access Policy for the Account Service role."
   type        = string
   default     = "UpwindAccountServiceCloudScannerPolicy"
 
@@ -128,11 +155,7 @@ variable "account_service_cloudscanner_policy_name" {
 }
 
 variable "account_service_cloudscanner_ec2_network_policy_name" {
-  description = <<EOT
-The base name to be used when creating the CloudScanner EC2 Network Policy for the Account Service role.
-This policy contains permissions to create and manage EC2 network resources which can be omitted if you
-intend to provide the network stack configuration.
-  EOT
+  description = "The base name to be used when creating the CloudScanner EC2 Network Policy for the Account Service role. This policy contains permissions to create and manage EC2 network resources which can be omitted if you intend to provide the network stack configuration."
   type        = string
   default     = "UpwindAccountServiceCloudScannerEC2NetworkPolicy"
 
@@ -145,7 +168,7 @@ intend to provide the network stack configuration.
 }
 
 variable "account_service_agentless_k8s_access_entries_policy_name" {
-  description = "The base name to be used for the agentless Kubernetes access entries policy in the account service role."
+  description = "The base name to be used when creating the Agentless Kubernetes Access Entries Policy for the Account Service role."
   type        = string
   default     = "UpwindAccountServiceAgentlessK8sAEPolicy"
 
@@ -158,7 +181,7 @@ variable "account_service_agentless_k8s_access_entries_policy_name" {
 }
 
 variable "account_service_agentless_k8s_ssm_policy_name" {
-  description = "The base name to be used for the agentless Kubernetes SSM policy in the account service role."
+  description = "The base name to be used when creating the Agentless Kubernetes SSM Policy for the Account Service role."
   type        = string
   default     = "UpwindAccountServiceAgentlessK8sSSMPolicy"
 
@@ -171,7 +194,7 @@ variable "account_service_agentless_k8s_ssm_policy_name" {
 }
 
 variable "cloudscanner_administration_role_name" {
-  description = "The base name of the IAM administration role to be created, used for cloud scanning operations."
+  description = "The name to be given to the CloudScanner Administration IAM role. This role will only be created in the Orchestrator account if configured, and grants the operational permissions for the CloudScanners to run."
   type        = string
   default     = "UpwindCloudScannerAdministrationRole"
 
@@ -184,7 +207,7 @@ variable "cloudscanner_administration_role_name" {
 }
 
 variable "cloudscanner_administration_role_profile_name" {
-  description = "The name to be used for the CloudScanner admin role instance profile."
+  description = "The name of the EC2 Instance profile that will be associated with the CloudScanner Admin role."
   type        = string
   default     = "UpwindCloudScannerAdministrationRoleProfile"
 
@@ -198,7 +221,7 @@ variable "cloudscanner_administration_role_profile_name" {
 
 
 variable "cloudscanner_execution_role_name" {
-  description = "The base name of the IAM execution role to be created, used for cloud scanning operations."
+  description = "The name to be given to the CloudScanner Execution IAM role. This role will be created in each account onboarded, and grants permissions to allow the CloudScanners to perform cross-account scanning."
   type        = string
   default     = "UpwindCloudScannerExecutionRole"
 
@@ -227,7 +250,7 @@ variable "upwind_cloudscanner_auth_secret_value" {
 }
 
 variable "upwind_cloudscanner_auth_secret_arn" {
-  description = "The ARN of the secret containing the CloudScanner credentials."
+  description = "An ARN for an existing CloudScanner secret can be specified as an alternative to the client ID and client secret on Outpost deployments. If provided, it will be used instead of creating a secret. This needs to be accessible to the CloudScanners which shall be installed in the orchestrator account. For SaaS deployments, this field should remain empty."
   type        = string
   default     = null
   validation {
@@ -238,7 +261,7 @@ variable "upwind_cloudscanner_auth_secret_arn" {
 }
 
 variable "credentials_secret_name_prefix" {
-  description = "The prefix for the AWS Secrets Manager secret name storing Upwind client credentials. Used to create the secret if `UpwindClientId` and `UpwindClientSecret` are provided."
+  description = "The prefix for the AWS Secrets Manager secret name storing Upwind client credentials. Used to create the secret if the client ID and client secret are provided."
   type        = string
   default     = "/upwind"
 }
@@ -249,9 +272,21 @@ variable "cloudscanner_secret_name" {
   default     = "/cloudscanner-credentials"
 }
 
+variable "ssm_parameter_prefix" {
+  # The settings parameter is <prefix>/settings1, or <prefix>/<role_name_suffix>/settings1 with a role name suffix.
+  description = "The SSM Parameter Store path prefix under which the onboarding settings are stored in the orchestrator accounts. This should not normally be changed."
+  type        = string
+  default     = "/upwind/onboarding/configuration"
+
+  validation {
+    condition     = can(regex("^(/[a-zA-Z0-9_.-]+)+$", var.ssm_parameter_prefix))
+    error_message = "The SSM parameter prefix must begin with a forward slash (/), not end with one, and contain only letters, numbers, '_', '.', '-' and '/'."
+  }
+}
+
 variable "role_name_suffix" {
   # The role name suffix shall be appended to role names to ensure they are unique for different installations.
-  description = "A user specific suffix that will be appended to resources - eg role names."
+  description = "A suffix that will be appended to the role names to ensure they are unique."
   type        = string
   default     = null
 
@@ -271,7 +306,7 @@ variable "iam_role_path" {
   # role names) from arn:...:role/<name> to arn:...:role<path><name>. The default "/" is the AWS default and
   # leaves existing installations unchanged. IMPORTANT: changing this on an existing installation replaces the
   # roles (the path is part of their identity).
-  description = "The common IAM path applied to all onboarding IAM roles, policies and instance profiles. Must begin and end with a forward slash (/)."
+  description = "The common IAM Role Path to be used with all IAM role and policies. This maps straight through to the IAM Path property on the IAM roles and policies - i.e. it must begin and end with a forward slash `/` - eg `/security/upwind/`."
   type        = string
   default     = "/"
 
@@ -285,7 +320,7 @@ variable "iam_role_path" {
 # The following variables are used conditionally enable / disable feature options
 #######################################################################################
 variable "upwind_feature_dspm_enabled" {
-  description = "Enable the creation of roles to enable DSPM scanning. This includes permissions to access the the contents of S3 buckets."
+  description = "Enable the creation of roles to enable DSPM scanning. This includes permissions to access the contents of S3 buckets."
   type        = bool
   default     = true
 }
@@ -308,14 +343,36 @@ variable "upwind_feature_dspm_rds_account_allowlist" {
   default     = []
 }
 
+variable "cloudscanner_dspm_rds_execution_policy_name" {
+  description = "The base name to be used when creating the CloudScanner DSPM RDS Policy attached to the CloudScanner Execution role. Must differ from the DSPM RDS Policy name."
+  type        = string
+  default     = "UpwindCloudScannerDspmRdsExecutionPolicy"
+
+  validation {
+    condition     = can(regex("^[\\w+=,.@-]+$", var.cloudscanner_dspm_rds_execution_policy_name))
+    error_message = "The DSPM RDS execution policy base name contains invalid characters."
+  }
+}
+
+variable "cloudscanner_dspm_rds_policy_name" {
+  description = "The base name of the DSPM RDS managed policy attached to the CloudScanner admin role. Must differ from cloudscanner_dspm_rds_execution_policy_name."
+  type        = string
+  default     = "UpwindCloudScannerDspmRdsPolicy"
+
+  validation {
+    condition     = can(regex("^[\\w+=,.@-]+$", var.cloudscanner_dspm_rds_policy_name))
+    error_message = "The DSPM RDS policy base name contains invalid characters."
+  }
+}
+
 variable "upwind_cloudscanner_management_enabled" {
-  description = "Enable the permissions necessary to support automated CloudScanner deployment and management."
+  description = "Enable the permissions necessary to support automated CloudScanner deployment and management. If disabled the CloudScanner stacks will need to be installed manually."
   type        = bool
   default     = true
 }
 
 variable "upwind_include_ec2_network_management_permissions" {
-  description = "Include permissions necessary to create and manage EC2 network resources."
+  description = "Include the permissions necessary to create and manage EC2 network resources. If providing custom networking configuration from the start, this can be omitted. Note: CloudScanners will not be installed until the necessary network configuration has been provided."
   type        = bool
   default     = true
 }
@@ -359,7 +416,7 @@ variable "upwind_agentless_k8s_ssm_enabled" {
 }
 
 variable "upwind_agentless_k8s_eks_admin_view_policy_enabled" {
-  description = "Allow the role to associate AmazonEKSAdminViewPolicy (in addition to AmazonEKSViewPolicy) on Upwind-created access entries. Only takes effect when upwind_agentless_k8s_access_entries_enabled is true."
+  description = "Allow the role to associate AmazonEKSAdminViewPolicy (in addition to AmazonEKSViewPolicy) on Upwind-created EKS access entries. Only takes effect when agentless Kubernetes resource fetching using access entries is turned on."
   type        = bool
   default     = true
 }
@@ -369,13 +426,13 @@ variable "upwind_agentless_k8s_eks_admin_view_policy_enabled" {
 # The following variables configure SaaS deployment mode
 #######################################################################################
 variable "is_saas" {
-  description = "When true, configures the module for Upwind SaaS-managed CloudScanner deployment. In SaaS mode the CloudScanner admin role and credentials secret are not created; instead a customer assume role is created that the Upwind SaaS account can assume."
+  description = "Enable CloudScanner SaaS mode, where Upwind runs the CloudScanners. The default orchestrator account then gets the CloudScanner SaaS Customer Assume role, which the Upwind SaaS assumes, instead of the CloudScanner Administration role and credentials secret; additional orchestrator accounts still get the Administration role and secret."
   type        = bool
   default     = false
 }
 
 variable "cloudscanner_saas_trusted_account_id" {
-  description = "The AWS account ID of the Upwind SaaS account that will assume the customer assume role. Required when is_saas = true."
+  description = "The account ID that will be configured as the trust principal for the Customer Assume role when deploying with CloudScanner SaaS."
   type        = string
   default     = null
 
@@ -386,7 +443,7 @@ variable "cloudscanner_saas_trusted_account_id" {
 }
 
 variable "cloudscanner_saas_customer_assume_role_name" {
-  description = "Base name of the IAM role created in the orchestrator account that the Upwind SaaS account assumes to perform scanning. Only used when is_saas = true."
+  description = "The name of the CloudScanner Customer Assume IAM role to be created, used by the Upwind SaaS to assume roles in the Customer orchestrator account."
   type        = string
   default     = "UpwindCloudScannerCustomerAssumeRole"
 
@@ -408,7 +465,7 @@ variable "cloudscanner_saas_customer_assume_role_name" {
 # Full role name validation is delegated to the sub modules.
 #######################################################################################
 variable "organization_role_permissions_boundary" {
-  description = "(Optional). Permissions boundary policy (ARN or policy name/path) to attach to the Org Discovery role."
+  description = "Optional. A pre-existing IAM permissions boundary policy to attach to the Organization (discovery) role, which is created in the management account. This constrains the maximum permissions the role can have and does not grant any permissions itself - the boundary policy must already exist in that account and must allow the AWS Organizations and CloudFormation permissions the role needs. You may provide either the full policy ARN (e.g. `arn:aws:iam::123456789012:policy/MyBoundary`) or just the policy name including any path but WITHOUT a leading slash (e.g. `MyBoundary` or `team/security/MyBoundary`), in which case the ARN is formed as `arn:<partition>:iam::<this-account-id>:policy/<value>`. Leave unset to create the role without a permissions boundary."
   type        = string
   default     = null
 
@@ -419,7 +476,7 @@ variable "organization_role_permissions_boundary" {
 }
 
 variable "account_service_role_permissions_boundary" {
-  description = "(Optional). Permissions boundary policy (ARN or policy name/path) to attach to the Account Service role."
+  description = "Optional. A pre-existing IAM permissions boundary policy to attach to the Account Service (read-only) role, in every account where the role is created (the management account and each onboarded account). This constrains the maximum permissions the role can have and does not grant any permissions itself - the boundary policy must already exist in each of those accounts. You may provide either the full policy ARN (e.g. `arn:aws:iam::123456789012:policy/MyBoundary`) or just the policy name including any path but WITHOUT a leading slash (e.g. `MyBoundary` or `team/security/MyBoundary`), in which case the ARN is formed per-account as `arn:<partition>:iam::<that-account-id>:policy/<value>`. Because a bare ARN is account-specific, prefer the name/path form for org-wide deployments so each account resolves its own local policy. Leave unset to create the role without a permissions boundary."
   type        = string
   default     = null
 
@@ -430,7 +487,7 @@ variable "account_service_role_permissions_boundary" {
 }
 
 variable "cloudscanner_administration_role_permissions_boundary" {
-  description = "(Optional). Permissions boundary policy (ARN or policy name/path) to attach to the CloudScanner admin role."
+  description = "Optional. A pre-existing IAM permissions boundary policy to attach to the CloudScanner Administration role, which is created only in the orchestrator account. This constrains the maximum permissions the role can have and does not grant any permissions itself - the boundary policy must already exist in that account. You may provide either the full policy ARN (e.g. `arn:aws:iam::123456789012:policy/MyBoundary`) or just the policy name including any path but WITHOUT a leading slash (e.g. `MyBoundary` or `team/security/MyBoundary`), in which case the ARN is formed as `arn:<partition>:iam::<account-id>:policy/<value>`. Leave unset to create the role without a permissions boundary."
   type        = string
   default     = null
 
@@ -441,12 +498,23 @@ variable "cloudscanner_administration_role_permissions_boundary" {
 }
 
 variable "cloudscanner_execution_role_permissions_boundary" {
-  description = "(Optional). Permissions boundary policy (ARN or policy name/path) to attach to the CloudScanner execution role."
+  description = "Optional. A pre-existing IAM permissions boundary policy to attach to the CloudScanner Execution role, in every account where the role is created (the management account and each onboarded account). This constrains the maximum permissions the role can have and does not grant any permissions itself - the boundary policy must already exist in each of those accounts. You may provide either the full policy ARN (e.g. `arn:aws:iam::123456789012:policy/MyBoundary`) or just the policy name including any path but WITHOUT a leading slash (e.g. `MyBoundary` or `team/security/MyBoundary`), in which case the ARN is formed per-account as `arn:<partition>:iam::<that-account-id>:policy/<value>`. Because a bare ARN is account-specific, prefer the name/path form for org-wide deployments so each account resolves its own local policy. Leave unset to create the role without a permissions boundary."
   type        = string
   default     = null
 
   validation {
     condition     = var.cloudscanner_execution_role_permissions_boundary == null || can(regex("^arn:[a-z0-9-]*:iam::[0-9]{12}:policy/.+$", var.cloudscanner_execution_role_permissions_boundary)) || can(regex("^[a-zA-Z0-9+=,.@_-][a-zA-Z0-9+=,.@_/-]*$", var.cloudscanner_execution_role_permissions_boundary))
+    error_message = "Must be null, a valid IAM policy ARN, or an IAM policy name/path without a leading slash."
+  }
+}
+
+variable "cloudscanner_saas_customer_assume_role_permissions_boundary" {
+  description = "Optional. A pre-existing IAM permissions boundary policy to attach to the CloudScanner SaaS Customer Assume role, which is created only in the orchestrator account for SaaS deployments. This constrains the maximum permissions the role can have and does not grant any permissions itself - the boundary policy must already exist in that account. You may provide either the full policy ARN (e.g. `arn:aws:iam::123456789012:policy/MyBoundary`) or just the policy name including any path but WITHOUT a leading slash (e.g. `MyBoundary` or `team/security/MyBoundary`), in which case the ARN is formed as `arn:<partition>:iam::<account-id>:policy/<value>`. Leave unset to create the role without a permissions boundary."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.cloudscanner_saas_customer_assume_role_permissions_boundary == null || can(regex("^arn:[a-z0-9-]*:iam::[0-9]{12}:policy/.+$", var.cloudscanner_saas_customer_assume_role_permissions_boundary)) || can(regex("^[a-zA-Z0-9+=,.@_-][a-zA-Z0-9+=,.@_/-]*$", var.cloudscanner_saas_customer_assume_role_permissions_boundary))
     error_message = "Must be null, a valid IAM policy ARN, or an IAM policy name/path without a leading slash."
   }
 }
@@ -463,13 +531,13 @@ variable "single_account_onboarding_role_permissions_boundary" {
 }
 
 variable "upwind_enable_self_managed_kms_key" {
-  description = "Enable self managed kms key instead of upwind managed kms key"
+  description = "Specify whether to use your own KMS customer managed key (CMK) or an Upwind managed KMS key."
   type        = bool
   default     = false
 }
 
 variable "is_virtual_organization" {
-  description = "Enable virtual organization deployment mode"
+  description = "Deploy the Account Service role in Virtual Organization mode, for accounts onboarded together without an AWS Organization. There is then no Org Discovery role, so the Account Service role carries the tags Upwind would otherwise read from it."
   type        = bool
   default     = false
 }
@@ -509,5 +577,5 @@ variable "deployment_region" {
 variable "enable_securityhub_integration" {
   type        = bool
   default     = false
-  description = "Enable SecurityHub integration (adds securityhub:BatchImportFindings to Account Service roles)"
+  description = "Allow the Account Service role to publish Upwind findings into this account's AWS Security Hub (securityhub:BatchImportFindings)."
 }

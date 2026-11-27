@@ -1,14 +1,15 @@
 resource "aws_secretsmanager_secret" "cloudscanner_secret" {
 
   name                    = var.secret_name
+  description             = "Secret to store Upwind client credentials for secure access.\n"
   recovery_window_in_days = 0
 
   tags = merge(
     var.custom_tags,
     {
-      "upwind:aws:Component"      = "Onboarding",
+      "upwind:aws:Component"      = "Onboarding"
       "upwind:aws:ReleaseVersion" = local.upwind_version
-    }
+    },
   )
 }
 

@@ -7,6 +7,7 @@ variable "secret_name" {
 variable "auth_client_id" {
   description = "The CloudScanner client ID for Upwind Security authentication."
   type        = string
+  sensitive   = true
 
   validation {
     condition     = var.auth_client_id != ""
@@ -17,6 +18,7 @@ variable "auth_client_id" {
 variable "auth_secret_value" {
   description = "The CloudScanner client secret for Upwind Security authentication."
   type        = string
+  sensitive   = true
 
   validation {
     condition     = var.auth_secret_value != ""

@@ -4,18 +4,21 @@ locals {
   upwind_version = "TF-3.0.1"
 
   # The upwind_trust_arn is included in the trusted identity of roles which can be assumed by the Upwind SaaS.
-  upwind_trusted_arn = "arn:${data.aws_partition.current.partition}:iam::${var.upwind_trusted_account_id}:root"
+  # Upwind's account for the partition being deployed to, unless upwind_trusted_account_id overrides it.
+  upwind_trusted_account_id = coalesce(var.upwind_trusted_account_id, local.partition.trusted_account)
 
   # The following conditional expressions are used when determining which resources can be included in each account.
 
   # Resolved resource names
-  suffix                                      = var.role_name_suffix != null ? "-${var.role_name_suffix}" : ""
-  organization_account_service_role_name      = "${var.organization_role_name}${local.suffix}"
-  account_service_role_name                   = "${var.account_service_role_name}${local.suffix}"
-  cloudscanner_admin_role_name                = "${var.cloudscanner_administration_role_name}${local.suffix}"
-  cloudscanner_admin_role_profile_name        = "${var.cloudscanner_administration_role_profile_name}${local.suffix}"
-  cloudscanner_execution_role_name            = "${var.cloudscanner_execution_role_name}${local.suffix}"
-  cloudscanner_secret_name                    = "${var.credentials_secret_name_prefix}${var.cloudscanner_secret_name}${local.suffix}"
+  suffix                                 = var.role_name_suffix != null ? "-${var.role_name_suffix}" : ""
+  organization_account_service_role_name = "${var.organization_role_name}${local.suffix}"
+  account_service_role_name              = "${var.account_service_role_name}${local.suffix}"
+  cloudscanner_admin_role_name           = "${var.cloudscanner_administration_role_name}${local.suffix}"
+  cloudscanner_admin_role_profile_name   = "${var.cloudscanner_administration_role_profile_name}${local.suffix}"
+  cloudscanner_execution_role_name       = "${var.cloudscanner_execution_role_name}${local.suffix}"
+  cloudscanner_secret_name               = "${var.credentials_secret_name_prefix}${var.cloudscanner_secret_name}${local.suffix}"
+  # The cloudscanner_secret_name default, which is the fixed secret base name in the CloudFormation templates.
+  default_cloudscanner_secret_name            = "/cloudscanner-credentials"
   cloudscanner_saas_customer_assume_role_name = "${var.cloudscanner_saas_customer_assume_role_name}${local.suffix}"
 
   # Create managed policy names
@@ -26,9 +29,12 @@ locals {
   account_service_agentless_k8s_access_entries_policy_name = "${var.account_service_agentless_k8s_access_entries_policy_name}${local.suffix}"
   account_service_agentless_k8s_ssm_policy_name            = "${var.account_service_agentless_k8s_ssm_policy_name}${local.suffix}"
 
-  # Shared DSPM RDS managed-policy names (mirror the CloudFormation v2 ManagedPolicyName values).
-  cloudscanner_dspm_rds_policy_name            = "UpwindCloudScannerDspmRdsPolicy${local.suffix}"
-  cloudscanner_dspm_rds_vpc_access_policy_name = "UpwindCloudScannerDspmRdsVpcAccessPolicy${local.suffix}"
+  # DSPM RDS managed-policy names (the CloudFormation ManagedPolicyName values).
+  cloudscanner_dspm_rds_policy_name           = "${var.cloudscanner_dspm_rds_policy_name}${local.suffix}"
+  cloudscanner_dspm_rds_execution_policy_name = "${var.cloudscanner_dspm_rds_execution_policy_name}${local.suffix}"
+
+  # The SSM path of the onboarding settings: the prefix, plus the role name suffix as a further path segment.
+  ssm_parameter_prefix = var.role_name_suffix != null ? "${var.ssm_parameter_prefix}/${var.role_name_suffix}" : var.ssm_parameter_prefix
 
   # Condition used to determine if the module is being applied to the management account
   condition_has_management_account_id = !(var.management_account_id == null)
@@ -44,15 +50,30 @@ locals {
     (data.aws_caller_identity.current.account_id == var.orchestrator_account_id)
   ])
 
+  # Additional orchestrator accounts augment the default orchestrator account (orchestrator_account_id).
+  condition_is_additional_orchestrator_account = contains(var.additional_orchestrator_account_ids, data.aws_caller_identity.current.account_id)
+  condition_is_any_orchestrator_account        = local.condition_is_orchestrator_account || local.condition_is_additional_orchestrator_account
+
   # SaaS mode conditions
   condition_is_saas_mode                = var.is_saas
   condition_create_customer_assume_role = local.condition_is_saas_mode && local.condition_is_orchestrator_account
 
+  # The CloudScanner admin role, secret and management permissions go to every orchestrator account, except the
+  # default one in SaaS mode (Upwind runs the CloudScanners there through the customer assume role).
+  condition_create_orchestration_account_resources = local.condition_is_any_orchestrator_account && (!local.condition_is_saas_mode || !local.condition_is_orchestrator_account)
+
   # The single account onboarding Lambda is only relevant for Upwind managed organizations, and can be opted out of
   condition_create_single_account_onboarding_lambda = var.is_virtual_organization && var.upwind_single_account_onboarding_lambda_enabled
 
+  # DSPM (S3) enablement (mirrors the execution-role module), recorded in the onboarding settings.
+  dspm_account_allowed = (
+    length(var.upwind_feature_dspm_account_whitelist) == 0 ||
+    contains(var.upwind_feature_dspm_account_whitelist, data.aws_caller_identity.current.account_id)
+  )
+  dspm_enabled = var.upwind_feature_dspm_enabled && local.dspm_account_allowed
+
   # DSPM RDS scanning enablement (mirrors the execution-role module): the feature flag gated by an optional
-  # per-account allowlist. Drives the shared DSPM RDS managed policy and its role attachments.
+  # per-account allowlist. Drives the DSPM RDS managed policies and their role attachments.
   dspm_rds_account_allowed = (
     length(var.upwind_feature_dspm_rds_account_allowlist) == 0 ||
     contains(var.upwind_feature_dspm_rds_account_allowlist, data.aws_caller_identity.current.account_id)
@@ -60,17 +81,17 @@ locals {
   dspm_rds_enabled = var.upwind_feature_dspm_rds_enabled && local.dspm_rds_account_allowed
 
   # Default the SaaS trusted account to the general Upwind trusted account if not explicitly set.
-  saas_trusted_account_id = coalesce(var.cloudscanner_saas_trusted_account_id, var.upwind_trusted_account_id)
+  saas_trusted_account_id = coalesce(var.cloudscanner_saas_trusted_account_id, local.upwind_trusted_account_id)
 
-  # Condition to determine if CloudScanner secret should be created.
-  # Not created in SaaS mode (Upwind manages the CloudScanner and its credentials).
-
-  # Condition to determine if CloudScanner should be created
+  # Condition to determine if CloudScanner secret should be created: wherever the admin role is, unless an ARN
+  # was given. Not created in the default orchestrator account in SaaS mode (Upwind manages its credentials).
   condition_create_cloudscanner_secret = alltrue([
-    local.condition_is_orchestrator_account,
-    !local.condition_is_saas_mode,
+    local.condition_create_orchestration_account_resources,
     var.upwind_cloudscanner_auth_secret_arn == null
   ])
+
+  # The secret ARN supplied by the caller, empty when none was given.
+  given_cloudscanner_secret_arn = var.upwind_cloudscanner_auth_secret_arn != null ? var.upwind_cloudscanner_auth_secret_arn : ""
 
   # ---------------------------------------------
   # CloudScanner auth secret resolution logic

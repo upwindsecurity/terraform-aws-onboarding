@@ -77,3 +77,42 @@ variable "iam_role_path" {
   type        = string
   default     = "/"
 }
+
+variable "create_cloudscanner_secret" {
+  # false (grant exactly cloudscanner_secret_arn) is correct for any secret; true grants the default name pattern.
+  description = "Whether the CloudScanner secret is the one created by this deployment (named <credentials_secret_name_prefix>/cloudscanner-credentials[-<role_name_suffix>]), rather than an existing secret given by ARN."
+  type        = bool
+  default     = false
+  nullable    = false
+}
+
+variable "credentials_secret_name_prefix" {
+  description = "The name prefix of the CloudScanner secret created by this deployment."
+  type        = string
+  default     = "/upwind"
+  nullable    = false
+}
+
+variable "role_name_suffix" {
+  description = "The role name suffix (without the leading '-'). Empty when none is used."
+  type        = string
+  default     = ""
+  nullable    = false
+}
+
+variable "orchestrator_account_id" {
+  description = "The default orchestrator account ID, whose CloudScanner admin role the scaler may pass. Defaults to this account."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.orchestrator_account_id == null || can(regex("^[0-9]{12}$", var.orchestrator_account_id))
+    error_message = "The orchestrator account id must be a 12-digit AWS account ID."
+  }
+}
+
+variable "dspm_rds_enabled" {
+  description = "Whether DSPM RDS scanning is enabled in this account (adds the executor's VPC ENI permissions)."
+  type        = bool
+  default     = false
+}
