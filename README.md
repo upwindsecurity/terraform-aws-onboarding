@@ -24,7 +24,8 @@ Notionally the onboarding process takes 3 account types into consideration.
 * Orchestrator Account: The orchestrator account is regarded as a special account and is the account in which
   Upwind will orchestrate its scanning activities - creating the CloudScanner resources as necessary.
   Additional orchestrator accounts (`additional_orchestrator_account_ids`) can be added alongside the default one
-  (`orchestrator_account_id`, which is then required); each gets the orchestrator resources.
+  (`orchestrator_account_id`, which is then required); each gets the orchestrator resources. See
+  [Additional Orchestrator Accounts](#additional-orchestrator-accounts).
 * Other accounts: The remaining accounts should be connected as these are accounts which are assumed to need protection
   whether through auditing or scanning.
 ## Roles and IAM Policies
@@ -96,6 +97,79 @@ orchestrator account (`orchestrator_account_id`). Instead a customer assume role
 CloudScanner admin role and credentials secret.
 The role is defined in the [iam_cloudscanner_saas_customer_assume_role](https://github.com/upwindsecurity/terraform-aws-onboarding/tree/main/modules/iam_cloudscanner_saas_customer_assume_role) submodule.
 
+### Additional Orchestrator Accounts
+CloudScanners can be orchestrated from more than one account. `orchestrator_account_id` is the default orchestrator
+account and `additional_orchestrator_account_ids` lists further orchestrator accounts; the additional accounts
+augment the default one, so `orchestrator_account_id` must be set whenever additional accounts are given.
+* Each orchestrator account, default and additional, gets the orchestrator resources: the CloudScanner admin role
+  and its instance profile, the CloudScanner credentials secret, the elevated Account Service role permissions used
+  to install and manage CloudScanners, and the [onboarding settings](#onboarding-settings-ssm-parameter).
+* In every account, the CloudScanner Execution role trusts the CloudScanner admin role of each orchestrator
+  account, so any orchestrator account can scan any account.
+* In SaaS mode the default orchestrator account gets the CloudScanner Customer Assume role instead of the admin role
+  and credentials secret; the additional orchestrator accounts still get both.
+* The Organization Discovery role records the orchestrator accounts in its `upwind:aws:OrchestratorAccountId` tag
+  (the default account first, colon separated), which is how Upwind finds them.
+
+Pass the same `orchestrator_account_id` and `additional_orchestrator_account_ids` to every account: the module works
+out what to create in each account by comparing these with the account it is applied in.
+
+### Onboarding Settings (SSM Parameter)
+Each orchestrator account, default and additional, stores its onboarding configuration in an SSM parameter, a JSON
+document named `<ssm_parameter_prefix>/settings1` (`<ssm_parameter_prefix>/<role_name_suffix>/settings1` with a role
+name suffix; the prefix defaults to `/upwind/onboarding/configuration`). It records how the account was onboarded:
+
+| Field | Value |
+|---|---|
+| `version` | The format version of the document (currently `1`). |
+| `releaseVersion` | The module release that wrote it. |
+| `secretARN` | The CloudScanner credentials secret: the one the module created, or `upwind_cloudscanner_auth_secret_arn`. Empty when the account has no secret (a SaaS default orchestrator account). |
+| `executionRoleName` | The CloudScanner Execution role name, with its IAM path and any role name suffix. |
+| `instanceProfile` | The ARN of the CloudScanner admin role's instance profile. Empty without the admin role. |
+| `adminRoleId` | The unique ID of the CloudScanner admin role. Empty without the admin role. |
+| `adminRoleName` | The CloudScanner admin role name, with its IAM path and any role name suffix. Empty without the admin role. |
+| `additionalOrchestratorAccountIds` | `additional_orchestrator_account_ids` (the same list in every orchestrator account). |
+| `outpostOnlyAccountIds` | `outpost_only_account_ids`. |
+| `features.dspm` / `features.dspmRds` | Whether DSPM / DSPM RDS are enabled (following the DSPM account allowlists). |
+| `features.csAutomation` | Whether the CloudScanner management permissions are granted in this account (`upwind_cloudscanner_management_enabled`, orchestrator resources present). |
+| `features.csNetwork` | Whether the EC2 network management permissions are also granted (`upwind_include_ec2_network_management_permissions`). |
+| `features.byok` | Whether a self-managed KMS key is used (`upwind_enable_self_managed_kms_key`). |
+
+For example, in the default orchestrator account of [the additional orchestrator example](#examples) (DSPM on by
+default; formatted here, stored as a single line):
+```json
+{
+  "version": 1,
+  "releaseVersion": "TF-5.0.0",
+  "secretARN": "arn:aws:secretsmanager:us-east-1:123456789012:secret:/upwind/cloudscanner-credentials-otmgax1m-AbCdEf",
+  "executionRoleName": "/UpwindCloudScannerExecutionRole-otmgax1m",
+  "instanceProfile": "arn:aws:iam::123456789012:instance-profile/UpwindCloudScannerAdministrationRoleProfile-otmgax1m",
+  "adminRoleId": "AROAEXAMPLEADMINROLEID",
+  "adminRoleName": "/UpwindCloudScannerAdministrationRole-otmgax1m",
+  "additionalOrchestratorAccountIds": ["234567890123", "345678901234"],
+  "outpostOnlyAccountIds": [],
+  "features": {"dspm": true, "dspmRds": false, "csAutomation": true, "csNetwork": true, "byok": false}
+}
+```
+The parameter in each additional orchestrator account has the same shape, with that account's own secret, admin
+role and instance profile.
+
+Upwind uses it to discover the orchestrator accounts' configuration. The Organization Discovery role's
+`upwind:aws:SSMParameterPrefix` tag holds the parameter path as an ARN (partition, region and the default
+orchestrator account), and its `upwind:aws:OrchestratorAccountId` tag lists the orchestrator accounts. Upwind then
+assumes the Account Service role in each orchestrator account, whose `UpwindOnboardingConfigurationReadPolicy` allows
+it to read the parameter, and reads that account's settings. For a virtual organization the Account Service role
+carries these tags instead.
+
+> [!IMPORTANT]
+> Apply the module with the same AWS region in every account. The parameter is created in the region the module is
+> applied in, and Upwind looks for it in each orchestrator account in the region recorded in the
+> `upwind:aws:SSMParameterPrefix` tag (the region the Organization Discovery role was created from).
+
+> [!TIP]
+> Do not edit or delete the parameter, and leave `ssm_parameter_prefix` at its default unless Upwind advises otherwise:
+> the module rewrites the parameter on each apply, and Upwind relies on finding it at the recorded path.
+
 ### Organization Discovery Role Registration
 Once the Organization Discovery role has been created in the management account, its ARN (available via the `organization_discovery_role_arn` output) must be registered with Upwind.
 This is normally done by entering the ARN into the Upwind console as part of the guided onboarding process, which in turn initiates the account discovery within the Upwind backend systems.
@@ -156,6 +230,41 @@ module "upwind_aws_org_onboarding" {
 
   # optional. for cloudscanner installation only
   orchestrator_account_id               = "123456789012"
+  upwind_cloudscanner_auth_client_id    = "<<cloudscanner-client-id>>"
+  upwind_cloudscanner_auth_secret_value = "<<cloudscanner-client-secret>>"
+}
+
+# Output the ARN of the organization discovery role. This ARN should be
+# entered into the Upwind console to complete the onboarding process.
+output "discovery_arn" {
+  value = module.upwind_aws_org_onboarding.organization_discovery_role_arn
+}
+```
+
+The following example adds two additional orchestrator accounts alongside the default one. The same values are
+passed to every account (see [Additional Orchestrator Accounts](#additional-orchestrator-accounts)):
+```hcl
+provider "aws" {
+  # Use the same region in every account: Upwind reads the onboarding settings from this region in each
+  # orchestrator account.
+  region = "us-east-1"
+}
+
+module "upwind_aws_org_onboarding" {
+  source = "upwindsecurity/onboarding/aws"
+  # Get versions from https://registry.terraform.io/modules/upwindsecurity/onboarding/aws/latest
+  version = "~> 5.0"
+
+  external_id                         = "F083B753-06B5-40B2-BE41-4035D6A7B6C7"
+  management_account_id               = "098765432109"
+  install_roles_in_management_account = true
+  role_name_suffix                    = "otmgax1m"
+
+  # The default orchestrator account, and two additional orchestrator accounts. Pass the same values in
+  # every account: each account works out its own role from them.
+  orchestrator_account_id             = "123456789012"
+  additional_orchestrator_account_ids = ["234567890123", "345678901234"]
+
   upwind_cloudscanner_auth_client_id    = "<<cloudscanner-client-id>>"
   upwind_cloudscanner_auth_secret_value = "<<cloudscanner-client-secret>>"
 }
