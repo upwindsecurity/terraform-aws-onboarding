@@ -15,7 +15,10 @@ account type:
   roles when `install_roles_in_management_account` is enabled.
 - **Orchestrator account** (`orchestrator_account_id`): receives the
   CloudScanner administration role and the CloudScanner credentials secret in
-  addition to the standard roles.
+  addition to the standard roles (in SaaS mode, `is_saas = true`, a customer
+  assume role for the Upwind SaaS instead). Additional orchestrator accounts
+  (`additional_orchestrator_account_ids`) receive the same orchestrator
+  resources, but always the administration role and secret.
 - **All other accounts**: receive the Account Service and CloudScanner
   Execution roles.
 
@@ -38,7 +41,7 @@ module "upwind_org_account_onboarding" {
   # The root-module source exists from 4.0.0 onwards; earlier versions used
   # the //modules/aws-org-onboarding (3.x) or //modules/main/aws-org-onboarding
   # (2.x) submodule paths.
-  version = "~> 4.0"
+  version = "~> 5.0"
 
   # The external ID is provided by Upwind as part of the onboarding process.
   external_id                         = "F083B753-06B5-40B2-BE41-4035D6A7B6C7"

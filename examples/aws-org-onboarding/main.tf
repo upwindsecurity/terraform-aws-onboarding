@@ -12,7 +12,7 @@ module "upwind_org_account_onboarding" {
   # The root-module source exists from 4.0.0 onwards; earlier versions used
   # the //modules/aws-org-onboarding (3.x) or //modules/main/aws-org-onboarding
   # (2.x) submodule paths.
-  version = "~> 4.0"
+  version = "~> 5.0"
 
   # The external ID is provided by Upwind as part of the onboarding process.
   external_id                         = "F083B753-06B5-40B2-BE41-4035D6A7B6C7"

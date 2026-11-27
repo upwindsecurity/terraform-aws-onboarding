@@ -23,6 +23,8 @@ Notionally the onboarding process takes 3 account types into consideration.
   to discover additional details about the AWS organization - eg the accounts.
 * Orchestrator Account: The orchestrator account is regarded as a special account and is the account in which
   Upwind will orchestrate its scanning activities - creating the CloudScanner resources as necessary.
+  Additional orchestrator accounts (`additional_orchestrator_account_ids`) can be added alongside the default one
+  (`orchestrator_account_id`, which is then required); each gets the orchestrator resources.
 * Other accounts: The remaining accounts should be connected as these are accounts which are assumed to need protection
   whether through auditing or scanning.
 ## Roles and IAM Policies
@@ -49,7 +51,9 @@ Any role that can be assumed from Upwind includes a trusted entity similar to th
     ]
 }
 ```
-The external-id will be provided by Upwind as part of the onboarding processes.
+The external-id will be provided by Upwind as part of the onboarding processes. The trusted account is Upwind's
+account for the AWS partition the module is applied in (the commercial one is shown); `upwind_trusted_account_id`
+overrides it.
 ### Organization Discovery role
 The Organization discovery role is a read only role which can be assumed and is used to discover the accounts within
 the AWS organization. It is assumed by Upwind to discover the accounts and account structure within the AWS organization.
@@ -86,8 +90,10 @@ The role is defined in the [iam_cloudscanner_execution_role](https://github.com/
 > The CloudScanner Execution role should be installed in all accounts which are to be scanned.
 
 ### CloudScanner Customer Assume role (SaaS mode)
-When the module is run in SaaS mode (`is_saas = true`), the CloudScanner admin role and the credentials secret are not created. Instead a customer assume role is created in the
-orchestrator account, which the Upwind SaaS account (`cloudscanner_saas_trusted_account_id`) can assume to perform scanning operations.
+When the module is run in SaaS mode (`is_saas = true`), the CloudScanner admin role and the credentials secret are not created in the default
+orchestrator account (`orchestrator_account_id`). Instead a customer assume role is created there, which the Upwind SaaS account
+(`cloudscanner_saas_trusted_account_id`) can assume to perform scanning operations. Additional orchestrator accounts still get the
+CloudScanner admin role and credentials secret.
 The role is defined in the [iam_cloudscanner_saas_customer_assume_role](https://github.com/upwindsecurity/terraform-aws-onboarding/tree/main/modules/iam_cloudscanner_saas_customer_assume_role) submodule.
 
 ### Organization Discovery Role Registration
@@ -141,7 +147,7 @@ module "upwind_aws_org_onboarding" {
   # The root-module source exists from 4.0.0 onwards; earlier versions used
   # the //modules/aws-org-onboarding (3.x) or //modules/main/aws-org-onboarding
   # (2.x) submodule paths.
-  version = "~> 4.0"
+  version = "~> 5.0"
 
   external_id                         = "F083B753-06B5-40B2-BE41-4035D6A7B6C7"
   management_account_id               = "098765432109"
@@ -175,7 +181,7 @@ module "upwind_aws_org_onboarding" {
   # The root-module source exists from 4.0.0 onwards; earlier versions used
   # the //modules/aws-org-onboarding (3.x) or //modules/main/aws-org-onboarding
   # (2.x) submodule paths.
-  version = "~> 4.0"
+  version = "~> 5.0"
 
   external_id = "F083B753-06B5-40B2-BE41-4035D6A7B6C7"
 
@@ -222,7 +228,7 @@ module "upwind_aws_org_onboarding" {
   # The root-module source exists from 4.0.0 onwards; earlier versions used
   # the //modules/aws-org-onboarding (3.x) or //modules/main/aws-org-onboarding
   # (2.x) submodule paths.
-  version = "~> 4.0"
+  version = "~> 5.0"
 
   external_id = "F083B753-06B5-40B2-BE41-4035D6A7B6C7"
 
@@ -355,6 +361,8 @@ output "discovery_arn" {
 <!-- END_TF_DOCS -->
 
 ## Upgrade notes
+These notes cover upgrading from 4.x to 5.0.
+
 ### AWS provider 6
 The module now requires the AWS provider `>= 6.0` (previously `>= 5.32`): it reads the region from the `region`
 attribute of the `aws_region` data source, which replaces the deprecated `name`. If your configuration pins the AWS
