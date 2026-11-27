@@ -62,3 +62,8 @@ output "cloudscanner_saas_customer_assume_role_name" {
   value       = one(module.cloudscanner_saas_customer_assume_role[*].iam_role.name)
 }
 
+
+output "cloudscanner_settings_parameter_name" {
+  description = "The name of the SSM parameter holding the Upwind onboarding settings. Only set in the orchestrator accounts."
+  value       = one(aws_ssm_parameter.cloudscanner_settings[*].name)
+}

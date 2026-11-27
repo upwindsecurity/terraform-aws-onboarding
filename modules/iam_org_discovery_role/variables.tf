@@ -1,6 +1,11 @@
-variable "trusted_arn" {
-  description = "The ARN of the upwind account to be used in the trusted entity of the role."
+variable "trusted_account_id" {
+  description = "The Upwind account trusted to assume the role."
   type        = string
+
+  validation {
+    condition     = can(regex("^[0-9]{12}$", var.trusted_account_id))
+    error_message = "trusted_account_id must be a 12-digit AWS account ID."
+  }
 }
 
 variable "external_id" {
@@ -65,71 +70,23 @@ variable "cloudscanner_admin_role_name" {
   }
 }
 
-variable "cloudscanner_admin_role_profile_name" {
-  description = "The name to be used for the CloudScanner admin role instance profile."
-  type        = string
-
-  validation {
-    condition     = can(regex("^[a-zA-Z0-9-_]+$", var.cloudscanner_admin_role_profile_name))
-    error_message = "The CloudScanner Admin role instance profile name contains invalid characters."
-  }
-
-  validation {
-    condition     = length(var.cloudscanner_admin_role_profile_name) <= 128
-    error_message = "The CloudScanner Admin role instance profile name is too long."
-  }
-}
-
-variable "cloudscanner_execution_role_name" {
-  description = "The name to be used for the CloudScanner execution role."
-  type        = string
-  default     = null
-
-  validation {
-    condition     = can(regex("^[a-zA-Z0-9-_]+$", var.cloudscanner_execution_role_name)) || var.cloudscanner_execution_role_name == null
-    error_message = "The CloudScanner Execution role name contains invalid characters."
-  }
-
-  validation {
-    condition     = length(var.cloudscanner_execution_role_name) <= 64
-    error_message = "The CloudScanner Execution role name is too long."
-  }
-}
-
 variable "custom_tags" {
   description = "Custom tags which shall be applied to each resource created by the module."
   type        = map(string)
   default     = {}
 }
 
-
 #######################################################################################
 # The following variables are used conditionally enable / disable feature options
 #######################################################################################
-variable "upwind_feature_dspm_enabled" {
-  description = "Enable the creation of roles to enable DSPM scanning. This includes permissions to access the the contents of S3 buckets."
-  type        = bool
-}
-
-variable "upwind_feature_dspm_rds_enabled" {
-  description = "Enable DSPM scanning of RDS databases. This includes the permissions required to snapshot and restore RDS databases so their contents can be scanned."
-  type        = bool
-}
-
-variable "upwind_cloudscanner_management_enabled" {
-  description = "Whether CloudScanner management permissions are enabled. Sets the upwind:aws:HasCSAutomationPermissions discovery tag."
-  type        = bool
-  default     = true
-}
-
 variable "is_saas_mode" {
-  description = "Whether this is a SaaS deployment. Sets the upwind:aws:CloudScannerSaaSMode discovery tag."
+  description = "Whether this is a SaaS deployment. Sets the upwind:aws:CloudScannerSaaSMode discovery tag, and selects the upwind:aws:CustomerAssumeRoleName tag over upwind:aws:CloudScannerAdministrationRoleName."
   type        = bool
   default     = false
 }
 
 variable "cloudscanner_saas_customer_assume_role_name" {
-  description = "Name of the SaaS customer assume role. When set, added as upwind:aws:CustomerAssumeRoleName discovery tag."
+  description = "Name of the SaaS customer assume role (including any suffix). In SaaS mode with an orchestrator account, recorded with the IAM path in the upwind:aws:CustomerAssumeRoleName discovery tag."
   type        = string
   default     = null
 }
@@ -150,4 +107,16 @@ variable "iam_role_path" {
   description = "The common IAM path applied to the role created by this module. Must begin and end with a forward slash (/). Defaults to \"/\" (the AWS default)."
   type        = string
   default     = "/"
+}
+
+variable "additional_orchestrator_account_ids" {
+  description = "Additional orchestrator account IDs. Appended, ':'-separated, to the default orchestrator account in the upwind:aws:OrchestratorAccountId discovery tag."
+  type        = list(string)
+  default     = []
+}
+
+variable "ssm_parameter_prefix" {
+  description = "The SSM Parameter Store path prefix of the onboarding settings in the orchestrator account (including any role name suffix segment). Recorded in the upwind:aws:SSMParameterPrefix discovery tag. This should not normally be changed."
+  type        = string
+  default     = "/upwind/onboarding/configuration"
 }

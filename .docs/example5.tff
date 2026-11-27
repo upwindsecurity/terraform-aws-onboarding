@@ -1,0 +1,30 @@
+provider "aws" {
+  # Use the same region in every account: Upwind reads the onboarding settings from this region in each
+  # orchestrator account.
+  region = "us-east-1"
+}
+
+module "upwind_aws_org_onboarding" {
+  source = "upwindsecurity/onboarding/aws"
+  # Get versions from https://registry.terraform.io/modules/upwindsecurity/onboarding/aws/latest
+  version = "~> 5.0"
+
+  external_id                         = "F083B753-06B5-40B2-BE41-4035D6A7B6C7"
+  management_account_id               = "098765432109"
+  install_roles_in_management_account = true
+  role_name_suffix                    = "otmgax1m"
+
+  # The default orchestrator account, and two additional orchestrator accounts. Pass the same values in
+  # every account: each account works out its own role from them.
+  orchestrator_account_id             = "123456789012"
+  additional_orchestrator_account_ids = ["234567890123", "345678901234"]
+
+  upwind_cloudscanner_auth_client_id    = "<<cloudscanner-client-id>>"
+  upwind_cloudscanner_auth_secret_value = "<<cloudscanner-client-secret>>"
+}
+
+# Output the ARN of the organization discovery role. This ARN should be
+# entered into the Upwind console to complete the onboarding process.
+output "discovery_arn" {
+  value = module.upwind_aws_org_onboarding.organization_discovery_role_arn
+}

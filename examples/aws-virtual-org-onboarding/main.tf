@@ -10,7 +10,7 @@ provider "aws" {
 module "upwind_virtual_org_account_onboarding" {
   source = "upwindsecurity/onboarding/aws"
   # Get versions from https://registry.terraform.io/modules/upwindsecurity/onboarding/aws/latest
-  version = "~> 4.0"
+  version = "~> 5.0"
 
   # Enable virtual organization mode. The Organization discovery role is not created in this mode.
   is_virtual_organization = true

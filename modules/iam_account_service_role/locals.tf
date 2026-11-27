@@ -13,15 +13,32 @@ locals {
     "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:policy/${var.permissions_boundary}"
   )
 
-  common_tags = merge(var.custom_tags, {
-    "upwind:aws:Component"      = "Onboarding",
-    "upwind:aws:ReleaseVersion" = local.upwind_version
-  })
+  # The orchestrator account id as an empty string when none was supplied.
+  orchestrator_account_id = var.orchestrator_account_id == null ? "" : var.orchestrator_account_id
 
-  upwind_cfn_sources = [
-    "https://s3.amazonaws.com/${var.upwind_cfn_bucket}/cfn/templates/*",
-    "https://s3.us-east-1.amazonaws.com/${var.upwind_cfn_bucket}/cfn/templates/*"
-  ]
+  # The default or an additional orchestrator account, where the onboarding settings parameter is written.
+  is_orchestrator_account = var.current_account_id == null ? false : (
+    var.current_account_id == local.orchestrator_account_id ||
+    contains(var.additional_orchestrator_account_ids, var.current_account_id)
+  )
+
+  # The onboarding settings parameter path, with the role name suffix as a further path segment when one is used.
+  ssm_parameter_prefix = var.role_name_suffix != "" ? "${var.ssm_parameter_prefix}/${var.role_name_suffix}" : var.ssm_parameter_prefix
+
+  # DSPM and DSPM RDS for this account, limited by the optional account allowlists.
+  dspm_enabled = var.upwind_feature_dspm_enabled && (
+    length(var.upwind_feature_dspm_account_whitelist) == 0 || (
+      var.current_account_id != null &&
+      contains(var.upwind_feature_dspm_account_whitelist, var.current_account_id)
+    )
+  )
+
+  dspm_rds_enabled = var.upwind_feature_dspm_rds_enabled && (
+    length(var.upwind_feature_dspm_rds_account_allowlist) == 0 || (
+      var.current_account_id != null &&
+      contains(var.upwind_feature_dspm_rds_account_allowlist, var.current_account_id)
+    )
+  )
 
   agentless_k8s_account_allowed = (
     length(var.upwind_agentless_k8s_account_whitelist) == 0 || (

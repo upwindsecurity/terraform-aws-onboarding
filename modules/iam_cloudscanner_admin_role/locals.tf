@@ -8,9 +8,4 @@ locals {
     can(regex("^arn:", var.permissions_boundary)) ? var.permissions_boundary :
     "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:policy/${var.permissions_boundary}"
   )
-
-  # Secret ARNs include a random suffix. We will strip that to use and ARNlike condition that allows the secret to be 
-  # updated if necessary
-  arn_parts                   = split("-", var.cloudscanner_secret_arn)
-  cloudscanner_secret_arnlike = "${join("-", slice(local.arn_parts, 0, length(local.arn_parts) - 1))}*"
 }

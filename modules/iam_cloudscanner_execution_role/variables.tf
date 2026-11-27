@@ -4,6 +4,13 @@ variable "orchestrator_account_id" {
   default     = ""
 }
 
+variable "additional_orchestrator_account_ids" {
+  description = "The additional orchestrator account IDs, whose CloudScanner admin role is also trusted."
+  type        = list(string)
+  default     = []
+  nullable    = false
+}
+
 variable "cloudscanner_admin_role_name" {
   description = "The name to be used for the CloudScanner admin role."
   type        = string
@@ -32,17 +39,6 @@ variable "upwind_feature_dspm_enabled" {
 
 variable "upwind_feature_dspm_account_whitelist" {
   description = "(Optional). If set, and given upwind_feature_dspm_enabled is true, this will limit the accounts that we create the DSPM S3 permissions in"
-  type        = list(string)
-  default     = []
-}
-
-variable "upwind_feature_dspm_rds_enabled" {
-  description = "Enable DSPM scanning of RDS databases. This includes the permissions required to snapshot and restore RDS databases so their contents can be scanned."
-  type        = bool
-}
-
-variable "upwind_feature_dspm_rds_account_allowlist" {
-  description = "(Optional). If set, and given upwind_feature_dspm_rds_enabled is true, this limits the accounts that we create the DSPM RDS permissions in."
   type        = list(string)
   default     = []
 }

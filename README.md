@@ -23,6 +23,9 @@ Notionally the onboarding process takes 3 account types into consideration.
   to discover additional details about the AWS organization - eg the accounts.
 * Orchestrator Account: The orchestrator account is regarded as a special account and is the account in which
   Upwind will orchestrate its scanning activities - creating the CloudScanner resources as necessary.
+  Additional orchestrator accounts (`additional_orchestrator_account_ids`) can be added alongside the default one
+  (`orchestrator_account_id`, which is then required); each gets the orchestrator resources. See
+  [Additional Orchestrator Accounts](#additional-orchestrator-accounts).
 * Other accounts: The remaining accounts should be connected as these are accounts which are assumed to need protection
   whether through auditing or scanning.
 ## Roles and IAM Policies
@@ -49,7 +52,9 @@ Any role that can be assumed from Upwind includes a trusted entity similar to th
     ]
 }
 ```
-The external-id will be provided by Upwind as part of the onboarding processes.
+The external-id will be provided by Upwind as part of the onboarding processes. The trusted account is Upwind's
+account for the AWS partition the module is applied in (the commercial one is shown); `upwind_trusted_account_id`
+overrides it.
 ### Organization Discovery role
 The Organization discovery role is a read only role which can be assumed and is used to discover the accounts within
 the AWS organization. It is assumed by Upwind to discover the accounts and account structure within the AWS organization.
@@ -86,9 +91,84 @@ The role is defined in the [iam_cloudscanner_execution_role](https://github.com/
 > The CloudScanner Execution role should be installed in all accounts which are to be scanned.
 
 ### CloudScanner Customer Assume role (SaaS mode)
-When the module is run in SaaS mode (`is_saas = true`), the CloudScanner admin role and the credentials secret are not created. Instead a customer assume role is created in the
-orchestrator account, which the Upwind SaaS account (`cloudscanner_saas_trusted_account_id`) can assume to perform scanning operations.
+When the module is run in SaaS mode (`is_saas = true`), the CloudScanner admin role and the credentials secret are not created in the default
+orchestrator account (`orchestrator_account_id`). Instead a customer assume role is created there, which the Upwind SaaS account
+(`cloudscanner_saas_trusted_account_id`) can assume to perform scanning operations. Additional orchestrator accounts still get the
+CloudScanner admin role and credentials secret.
 The role is defined in the [iam_cloudscanner_saas_customer_assume_role](https://github.com/upwindsecurity/terraform-aws-onboarding/tree/main/modules/iam_cloudscanner_saas_customer_assume_role) submodule.
+
+### Additional Orchestrator Accounts
+CloudScanners can be orchestrated from more than one account. `orchestrator_account_id` is the default orchestrator
+account and `additional_orchestrator_account_ids` lists further orchestrator accounts; the additional accounts
+augment the default one, so `orchestrator_account_id` must be set whenever additional accounts are given.
+* Each orchestrator account, default and additional, gets the orchestrator resources: the CloudScanner admin role
+  and its instance profile, the CloudScanner credentials secret, the elevated Account Service role permissions used
+  to install and manage CloudScanners, and the [onboarding settings](#onboarding-settings-ssm-parameter).
+* In every account, the CloudScanner Execution role trusts the CloudScanner admin role of each orchestrator
+  account, so any orchestrator account can scan any account.
+* In SaaS mode the default orchestrator account gets the CloudScanner Customer Assume role instead of the admin role
+  and credentials secret; the additional orchestrator accounts still get both.
+* The Organization Discovery role records the orchestrator accounts in its `upwind:aws:OrchestratorAccountId` tag
+  (the default account first, colon separated), which is how Upwind finds them.
+
+Pass the same `orchestrator_account_id` and `additional_orchestrator_account_ids` to every account: the module works
+out what to create in each account by comparing these with the account it is applied in.
+
+### Onboarding Settings (SSM Parameter)
+Each orchestrator account, default and additional, stores its onboarding configuration in an SSM parameter, a JSON
+document named `<ssm_parameter_prefix>/settings1` (`<ssm_parameter_prefix>/<role_name_suffix>/settings1` with a role
+name suffix; the prefix defaults to `/upwind/onboarding/configuration`). It records how the account was onboarded:
+
+| Field | Value |
+|---|---|
+| `version` | The format version of the document (currently `1`). |
+| `releaseVersion` | The module release that wrote it. |
+| `secretARN` | The CloudScanner credentials secret: the one the module created, or `upwind_cloudscanner_auth_secret_arn`. Empty when the account has no secret (a SaaS default orchestrator account). |
+| `executionRoleName` | The CloudScanner Execution role name, with its IAM path and any role name suffix. |
+| `instanceProfile` | The ARN of the CloudScanner admin role's instance profile. Empty without the admin role. |
+| `adminRoleId` | The unique ID of the CloudScanner admin role. Empty without the admin role. |
+| `adminRoleName` | The CloudScanner admin role name, with its IAM path and any role name suffix. Empty without the admin role. |
+| `additionalOrchestratorAccountIds` | `additional_orchestrator_account_ids` (the same list in every orchestrator account). |
+| `outpostOnlyAccountIds` | `outpost_only_account_ids`. |
+| `features.dspm` / `features.dspmRds` | Whether DSPM / DSPM RDS are enabled (following the DSPM account allowlists). |
+| `features.csAutomation` | Whether the CloudScanner management permissions are granted in this account (`upwind_cloudscanner_management_enabled`, orchestrator resources present). |
+| `features.csNetwork` | Whether the EC2 network management permissions are also granted (`upwind_include_ec2_network_management_permissions`). |
+| `features.byok` | Whether a self-managed KMS key is used (`upwind_enable_self_managed_kms_key`). |
+
+For example, in the default orchestrator account of [the additional orchestrator example](#examples) (DSPM on by
+default; formatted here, stored as a single line):
+```json
+{
+  "version": 1,
+  "releaseVersion": "TF-5.0.0",
+  "secretARN": "arn:aws:secretsmanager:us-east-1:123456789012:secret:/upwind/cloudscanner-credentials-otmgax1m-AbCdEf",
+  "executionRoleName": "/UpwindCloudScannerExecutionRole-otmgax1m",
+  "instanceProfile": "arn:aws:iam::123456789012:instance-profile/UpwindCloudScannerAdministrationRoleProfile-otmgax1m",
+  "adminRoleId": "AROAEXAMPLEADMINROLEID",
+  "adminRoleName": "/UpwindCloudScannerAdministrationRole-otmgax1m",
+  "additionalOrchestratorAccountIds": ["234567890123", "345678901234"],
+  "outpostOnlyAccountIds": [],
+  "features": {"dspm": true, "dspmRds": false, "csAutomation": true, "csNetwork": true, "byok": false}
+}
+```
+The parameter in each additional orchestrator account has the same shape, with that account's own secret, admin
+role and instance profile.
+
+Upwind uses it to discover the orchestrator accounts' configuration. The Organization Discovery role's
+`upwind:aws:SSMParameterPrefix` tag holds the parameter path as an ARN (partition, region and the default
+orchestrator account), and its `upwind:aws:OrchestratorAccountId` tag lists the orchestrator accounts. Upwind then
+assumes the Account Service role in each orchestrator account, whose `UpwindOnboardingConfigurationReadPolicy` allows
+it to read the parameter, and reads that account's settings. For a virtual organization the Account Service role
+carries these tags instead.
+
+> [!IMPORTANT]
+> Apply the module with the same AWS region in every account. The parameter is created in the region the module is
+> applied in, and Upwind looks for it in each orchestrator account in the region recorded in the
+> `upwind:aws:SSMParameterPrefix` tag (the region the Organization Discovery role was created from).
+
+> [!TIP]
+> Do not edit or delete the parameter, and leave `ssm_parameter_prefix` at its default unless Upwind advises otherwise:
+> the module rewrites the parameter on each apply, and Upwind relies on finding it at the recorded path.
 
 ### Organization Discovery Role Registration
 Once the Organization Discovery role has been created in the management account, its ARN (available via the `organization_discovery_role_arn` output) must be registered with Upwind.
@@ -141,7 +221,7 @@ module "upwind_aws_org_onboarding" {
   # The root-module source exists from 4.0.0 onwards; earlier versions used
   # the //modules/aws-org-onboarding (3.x) or //modules/main/aws-org-onboarding
   # (2.x) submodule paths.
-  version = "~> 4.0"
+  version = "~> 5.0"
 
   external_id                         = "F083B753-06B5-40B2-BE41-4035D6A7B6C7"
   management_account_id               = "098765432109"
@@ -150,6 +230,41 @@ module "upwind_aws_org_onboarding" {
 
   # optional. for cloudscanner installation only
   orchestrator_account_id               = "123456789012"
+  upwind_cloudscanner_auth_client_id    = "<<cloudscanner-client-id>>"
+  upwind_cloudscanner_auth_secret_value = "<<cloudscanner-client-secret>>"
+}
+
+# Output the ARN of the organization discovery role. This ARN should be
+# entered into the Upwind console to complete the onboarding process.
+output "discovery_arn" {
+  value = module.upwind_aws_org_onboarding.organization_discovery_role_arn
+}
+```
+
+The following example adds two additional orchestrator accounts alongside the default one. The same values are
+passed to every account (see [Additional Orchestrator Accounts](#additional-orchestrator-accounts)):
+```hcl
+provider "aws" {
+  # Use the same region in every account: Upwind reads the onboarding settings from this region in each
+  # orchestrator account.
+  region = "us-east-1"
+}
+
+module "upwind_aws_org_onboarding" {
+  source = "upwindsecurity/onboarding/aws"
+  # Get versions from https://registry.terraform.io/modules/upwindsecurity/onboarding/aws/latest
+  version = "~> 5.0"
+
+  external_id                         = "F083B753-06B5-40B2-BE41-4035D6A7B6C7"
+  management_account_id               = "098765432109"
+  install_roles_in_management_account = true
+  role_name_suffix                    = "otmgax1m"
+
+  # The default orchestrator account, and two additional orchestrator accounts. Pass the same values in
+  # every account: each account works out its own role from them.
+  orchestrator_account_id             = "123456789012"
+  additional_orchestrator_account_ids = ["234567890123", "345678901234"]
+
   upwind_cloudscanner_auth_client_id    = "<<cloudscanner-client-id>>"
   upwind_cloudscanner_auth_secret_value = "<<cloudscanner-client-secret>>"
 }
@@ -170,7 +285,12 @@ provider "aws" {
 }
 
 module "upwind_aws_org_onboarding" {
-  source = "https://get.upwind.io/terraform/modules/aws-org-onboarding/aws-org-onboarding-X.Y.Z.tar.gz"
+  source = "upwindsecurity/onboarding/aws"
+  # Get versions from https://registry.terraform.io/modules/upwindsecurity/onboarding/aws/latest
+  # The root-module source exists from 4.0.0 onwards; earlier versions used
+  # the //modules/aws-org-onboarding (3.x) or //modules/main/aws-org-onboarding
+  # (2.x) submodule paths.
+  version = "~> 5.0"
 
   external_id = "F083B753-06B5-40B2-BE41-4035D6A7B6C7"
 
@@ -212,7 +332,12 @@ provider "aws" {
 }
 
 module "upwind_aws_org_onboarding" {
-  source = "https://get.upwind.io/terraform/modules/aws-org-onboarding/aws-org-onboarding-X.Y.Z.tar.gz"
+  source = "upwindsecurity/onboarding/aws"
+  # Get versions from https://registry.terraform.io/modules/upwindsecurity/onboarding/aws/latest
+  # The root-module source exists from 4.0.0 onwards; earlier versions used
+  # the //modules/aws-org-onboarding (3.x) or //modules/main/aws-org-onboarding
+  # (2.x) submodule paths.
+  version = "~> 5.0"
 
   external_id = "F083B753-06B5-40B2-BE41-4035D6A7B6C7"
 
@@ -245,7 +370,7 @@ output "discovery_arn" {
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | >= 5.32.0 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | >= 6.0.0 |
 | <a name="provider_null"></a> [null](#provider\_null) | ~> 3.0 |
 ## Outputs
 
@@ -261,6 +386,7 @@ output "discovery_arn" {
 | <a name="output_cloudscanner_saas_customer_assume_role_name"></a> [cloudscanner\_saas\_customer\_assume\_role\_name](#output\_cloudscanner\_saas\_customer\_assume\_role\_name) | The name of the CloudScanner SaaS customer assume role. Only set when is\_saas = true and applied to the orchestrator account. |
 | <a name="output_cloudscanner_secret_arn"></a> [cloudscanner\_secret\_arn](#output\_cloudscanner\_secret\_arn) | The ARN of the CloudScanner Credentials secret. |
 | <a name="output_cloudscanner_secret_name"></a> [cloudscanner\_secret\_name](#output\_cloudscanner\_secret\_name) | The name of the CloudScanner Credentials secret. |
+| <a name="output_cloudscanner_settings_parameter_name"></a> [cloudscanner\_settings\_parameter\_name](#output\_cloudscanner\_settings\_parameter\_name) | The name of the SSM parameter holding the Upwind onboarding settings. Only set in the orchestrator accounts. |
 | <a name="output_organization_discovery_role_arn"></a> [organization\_discovery\_role\_arn](#output\_organization\_discovery\_role\_arn) | The ARN of the IAM role created for account discovery purposes. This ARN should be entered in to the Upwind Console |
 | <a name="output_organization_discovery_role_name"></a> [organization\_discovery\_role\_name](#output\_organization\_discovery\_role\_name) | The Name of the IAM role created for account discovery purposes. |
 | <a name="output_upwind_release_version"></a> [upwind\_release\_version](#output\_upwind\_release\_version) | The release version tag assigned to the deployment. For version visibility. |
@@ -268,52 +394,214 @@ output "discovery_arn" {
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_account_service_agentless_k8s_access_entries_policy_name"></a> [account\_service\_agentless\_k8s\_access\_entries\_policy\_name](#input\_account\_service\_agentless\_k8s\_access\_entries\_policy\_name) | The base name to be used for the agentless Kubernetes access entries policy in the account service role. | `string` | `"UpwindAccountServiceAgentlessK8sAEPolicy"` | no |
-| <a name="input_account_service_agentless_k8s_ssm_policy_name"></a> [account\_service\_agentless\_k8s\_ssm\_policy\_name](#input\_account\_service\_agentless\_k8s\_ssm\_policy\_name) | The base name to be used for the agentless Kubernetes SSM policy in the account service role. | `string` | `"UpwindAccountServiceAgentlessK8sSSMPolicy"` | no |
-| <a name="input_account_service_cloudformation_policy_name"></a> [account\_service\_cloudformation\_policy\_name](#input\_account\_service\_cloudformation\_policy\_name) | The base name to be used for the Cloudformation policy name in the account service role. | `string` | `"UpwindAccountServiceCloudFormationPolicy"` | no |
-| <a name="input_account_service_cloudscanner_ec2_network_policy_name"></a> [account\_service\_cloudscanner\_ec2\_network\_policy\_name](#input\_account\_service\_cloudscanner\_ec2\_network\_policy\_name) | The base name to be used when creating the CloudScanner EC2 Network Policy for the Account Service role.<br>This policy contains permissions to create and manage EC2 network resources which can be omitted if you<br>intend to provide the network stack configuration. | `string` | `"UpwindAccountServiceCloudScannerEC2NetworkPolicy"` | no |
-| <a name="input_account_service_cloudscanner_ec2_policy_name"></a> [account\_service\_cloudscanner\_ec2\_policy\_name](#input\_account\_service\_cloudscanner\_ec2\_policy\_name) | The base name to be used for the CloudScanner EC2 policy name in the account service role. | `string` | `"UpwindAccountServiceCloudScannerEC2Policy"` | no |
-| <a name="input_account_service_cloudscanner_policy_name"></a> [account\_service\_cloudscanner\_policy\_name](#input\_account\_service\_cloudscanner\_policy\_name) | The base name to be used for the CloudScanner policy name in the account service role. | `string` | `"UpwindAccountServiceCloudScannerPolicy"` | no |
-| <a name="input_account_service_role_name"></a> [account\_service\_role\_name](#input\_account\_service\_role\_name) | The base name of the IAM role to be created, used for security auditing purposes. | `string` | `"UpwindAccountServiceRole"` | no |
-| <a name="input_account_service_role_permissions_boundary"></a> [account\_service\_role\_permissions\_boundary](#input\_account\_service\_role\_permissions\_boundary) | (Optional). Permissions boundary policy (ARN or policy name/path) to attach to the Account Service role. | `string` | `null` | no |
-| <a name="input_cloudscanner_administration_role_name"></a> [cloudscanner\_administration\_role\_name](#input\_cloudscanner\_administration\_role\_name) | The base name of the IAM administration role to be created, used for cloud scanning operations. | `string` | `"UpwindCloudScannerAdministrationRole"` | no |
-| <a name="input_cloudscanner_administration_role_permissions_boundary"></a> [cloudscanner\_administration\_role\_permissions\_boundary](#input\_cloudscanner\_administration\_role\_permissions\_boundary) | (Optional). Permissions boundary policy (ARN or policy name/path) to attach to the CloudScanner administration role. | `string` | `null` | no |
-| <a name="input_cloudscanner_execution_role_name"></a> [cloudscanner\_execution\_role\_name](#input\_cloudscanner\_execution\_role\_name) | The base name of the IAM execution role to be created, used for cloud scanning operations. | `string` | `"UpwindCloudScannerExecutionRole"` | no |
-| <a name="input_cloudscanner_execution_role_permissions_boundary"></a> [cloudscanner\_execution\_role\_permissions\_boundary](#input\_cloudscanner\_execution\_role\_permissions\_boundary) | (Optional). Permissions boundary policy (ARN or policy name/path) to attach to the CloudScanner execution role. | `string` | `null` | no |
-| <a name="input_cloudscanner_saas_customer_assume_role_name"></a> [cloudscanner\_saas\_customer\_assume\_role\_name](#input\_cloudscanner\_saas\_customer\_assume\_role\_name) | Base name of the IAM role created in the orchestrator account that the Upwind SaaS account assumes to perform scanning. Only used when is\_saas = true. | `string` | `"UpwindCloudScannerCustomerAssumeRole"` | no |
-| <a name="input_cloudscanner_saas_trusted_account_id"></a> [cloudscanner\_saas\_trusted\_account\_id](#input\_cloudscanner\_saas\_trusted\_account\_id) | The AWS account ID of the Upwind SaaS account that will assume the customer assume role. Required when is\_saas = true. | `string` | `null` | no |
+| <a name="input_account_service_agentless_k8s_access_entries_policy_name"></a> [account\_service\_agentless\_k8s\_access\_entries\_policy\_name](#input\_account\_service\_agentless\_k8s\_access\_entries\_policy\_name) | The base name to be used when creating the Agentless Kubernetes Access Entries Policy for the Account Service role. | `string` | `"UpwindAccountServiceAgentlessK8sAEPolicy"` | no |
+| <a name="input_account_service_agentless_k8s_ssm_policy_name"></a> [account\_service\_agentless\_k8s\_ssm\_policy\_name](#input\_account\_service\_agentless\_k8s\_ssm\_policy\_name) | The base name to be used when creating the Agentless Kubernetes SSM Policy for the Account Service role. | `string` | `"UpwindAccountServiceAgentlessK8sSSMPolicy"` | no |
+| <a name="input_account_service_cloudformation_policy_name"></a> [account\_service\_cloudformation\_policy\_name](#input\_account\_service\_cloudformation\_policy\_name) | The base name to be used when creating the CloudFormation Policy for the Account Service role. | `string` | `"UpwindAccountServiceCloudFormationPolicy"` | no |
+| <a name="input_account_service_cloudscanner_ec2_network_policy_name"></a> [account\_service\_cloudscanner\_ec2\_network\_policy\_name](#input\_account\_service\_cloudscanner\_ec2\_network\_policy\_name) | The base name to be used when creating the CloudScanner EC2 Network Policy for the Account Service role. This policy contains permissions to create and manage EC2 network resources which can be omitted if you intend to provide the network stack configuration. | `string` | `"UpwindAccountServiceCloudScannerEC2NetworkPolicy"` | no |
+| <a name="input_account_service_cloudscanner_ec2_policy_name"></a> [account\_service\_cloudscanner\_ec2\_policy\_name](#input\_account\_service\_cloudscanner\_ec2\_policy\_name) | The base name to be used when creating the CloudScanner EC2 Access Policy for the Account Service role. | `string` | `"UpwindAccountServiceCloudScannerEC2Policy"` | no |
+| <a name="input_account_service_cloudscanner_policy_name"></a> [account\_service\_cloudscanner\_policy\_name](#input\_account\_service\_cloudscanner\_policy\_name) | The base name to be used when creating the CloudScanner Access Policy for the Account Service role. | `string` | `"UpwindAccountServiceCloudScannerPolicy"` | no |
+| <a name="input_account_service_role_name"></a> [account\_service\_role\_name](#input\_account\_service\_role\_name) | The name to be given to the Account Service IAM role. The Account Service role is created in each account to be connected and is generally used for account auditing purposes. | `string` | `"UpwindAccountServiceRole"` | no |
+| <a name="input_account_service_role_permissions_boundary"></a> [account\_service\_role\_permissions\_boundary](#input\_account\_service\_role\_permissions\_boundary) | Optional. A pre-existing IAM permissions boundary policy to attach to the Account Service (read-only) role, in every account where the role is created (the management account and each onboarded account). This constrains the maximum permissions the role can have and does not grant any permissions itself - the boundary policy must already exist in each of those accounts. You may provide either the full policy ARN (e.g. `arn:aws:iam::123456789012:policy/MyBoundary`) or just the policy name including any path but WITHOUT a leading slash (e.g. `MyBoundary` or `team/security/MyBoundary`), in which case the ARN is formed per-account as `arn:<partition>:iam::<that-account-id>:policy/<value>`. Because a bare ARN is account-specific, prefer the name/path form for org-wide deployments so each account resolves its own local policy. Leave unset to create the role without a permissions boundary. | `string` | `null` | no |
+| <a name="input_additional_orchestrator_account_ids"></a> [additional\_orchestrator\_account\_ids](#input\_additional\_orchestrator\_account\_ids) | A list of 12-digit account IDs to treat as additional Upwind orchestrator accounts, alongside the default orchestrator account. The CloudScanners are installed and managed in each orchestrator account. The orchestrator resources are deployed to these accounts, the CloudScanner Execution role in every account trusts their CloudScanner Administration role, and the list is recorded in the onboarding settings and in a tag on the Organization (discovery) role so that Upwind can find them. Leave empty to use only the default orchestrator account. | `list(string)` | `[]` | no |
+| <a name="input_cloudscanner_administration_role_name"></a> [cloudscanner\_administration\_role\_name](#input\_cloudscanner\_administration\_role\_name) | The name to be given to the CloudScanner Administration IAM role. This role will only be created in the Orchestrator account if configured, and grants the operational permissions for the CloudScanners to run. | `string` | `"UpwindCloudScannerAdministrationRole"` | no |
+| <a name="input_cloudscanner_administration_role_permissions_boundary"></a> [cloudscanner\_administration\_role\_permissions\_boundary](#input\_cloudscanner\_administration\_role\_permissions\_boundary) | Optional. A pre-existing IAM permissions boundary policy to attach to the CloudScanner Administration role, which is created only in the orchestrator account. This constrains the maximum permissions the role can have and does not grant any permissions itself - the boundary policy must already exist in that account. You may provide either the full policy ARN (e.g. `arn:aws:iam::123456789012:policy/MyBoundary`) or just the policy name including any path but WITHOUT a leading slash (e.g. `MyBoundary` or `team/security/MyBoundary`), in which case the ARN is formed as `arn:<partition>:iam::<account-id>:policy/<value>`. Leave unset to create the role without a permissions boundary. | `string` | `null` | no |
+| <a name="input_cloudscanner_administration_role_profile_name"></a> [cloudscanner\_administration\_role\_profile\_name](#input\_cloudscanner\_administration\_role\_profile\_name) | The name of the EC2 Instance profile that will be associated with the CloudScanner Admin role. | `string` | `"UpwindCloudScannerAdministrationRoleProfile"` | no |
+| <a name="input_cloudscanner_dspm_rds_execution_policy_name"></a> [cloudscanner\_dspm\_rds\_execution\_policy\_name](#input\_cloudscanner\_dspm\_rds\_execution\_policy\_name) | The base name to be used when creating the CloudScanner DSPM RDS Policy attached to the CloudScanner Execution role. Must differ from the DSPM RDS Policy name. | `string` | `"UpwindCloudScannerDspmRdsExecutionPolicy"` | no |
+| <a name="input_cloudscanner_dspm_rds_policy_name"></a> [cloudscanner\_dspm\_rds\_policy\_name](#input\_cloudscanner\_dspm\_rds\_policy\_name) | The base name of the DSPM RDS managed policy attached to the CloudScanner admin role. Must differ from cloudscanner\_dspm\_rds\_execution\_policy\_name. | `string` | `"UpwindCloudScannerDspmRdsPolicy"` | no |
+| <a name="input_cloudscanner_execution_role_name"></a> [cloudscanner\_execution\_role\_name](#input\_cloudscanner\_execution\_role\_name) | The name to be given to the CloudScanner Execution IAM role. This role will be created in each account onboarded, and grants permissions to allow the CloudScanners to perform cross-account scanning. | `string` | `"UpwindCloudScannerExecutionRole"` | no |
+| <a name="input_cloudscanner_execution_role_permissions_boundary"></a> [cloudscanner\_execution\_role\_permissions\_boundary](#input\_cloudscanner\_execution\_role\_permissions\_boundary) | Optional. A pre-existing IAM permissions boundary policy to attach to the CloudScanner Execution role, in every account where the role is created (the management account and each onboarded account). This constrains the maximum permissions the role can have and does not grant any permissions itself - the boundary policy must already exist in each of those accounts. You may provide either the full policy ARN (e.g. `arn:aws:iam::123456789012:policy/MyBoundary`) or just the policy name including any path but WITHOUT a leading slash (e.g. `MyBoundary` or `team/security/MyBoundary`), in which case the ARN is formed per-account as `arn:<partition>:iam::<that-account-id>:policy/<value>`. Because a bare ARN is account-specific, prefer the name/path form for org-wide deployments so each account resolves its own local policy. Leave unset to create the role without a permissions boundary. | `string` | `null` | no |
+| <a name="input_cloudscanner_saas_customer_assume_role_name"></a> [cloudscanner\_saas\_customer\_assume\_role\_name](#input\_cloudscanner\_saas\_customer\_assume\_role\_name) | The name of the CloudScanner Customer Assume IAM role to be created, used by the Upwind SaaS to assume roles in the Customer orchestrator account. | `string` | `"UpwindCloudScannerCustomerAssumeRole"` | no |
+| <a name="input_cloudscanner_saas_customer_assume_role_permissions_boundary"></a> [cloudscanner\_saas\_customer\_assume\_role\_permissions\_boundary](#input\_cloudscanner\_saas\_customer\_assume\_role\_permissions\_boundary) | Optional. A pre-existing IAM permissions boundary policy to attach to the CloudScanner SaaS Customer Assume role, which is created only in the orchestrator account for SaaS deployments. This constrains the maximum permissions the role can have and does not grant any permissions itself - the boundary policy must already exist in that account. You may provide either the full policy ARN (e.g. `arn:aws:iam::123456789012:policy/MyBoundary`) or just the policy name including any path but WITHOUT a leading slash (e.g. `MyBoundary` or `team/security/MyBoundary`), in which case the ARN is formed as `arn:<partition>:iam::<account-id>:policy/<value>`. Leave unset to create the role without a permissions boundary. | `string` | `null` | no |
+| <a name="input_cloudscanner_saas_trusted_account_id"></a> [cloudscanner\_saas\_trusted\_account\_id](#input\_cloudscanner\_saas\_trusted\_account\_id) | The Upwind SaaS account ID that will be configured as the trust principal for the Customer Assume role. Required when deploying with CloudScanner SaaS. | `string` | `null` | no |
 | <a name="input_cloudscanner_secret_name"></a> [cloudscanner\_secret\_name](#input\_cloudscanner\_secret\_name) | The base name used when creating the CloudScanner credentials secret. | `string` | `"/cloudscanner-credentials"` | no |
-| <a name="input_credentials_secret_name_prefix"></a> [credentials\_secret\_name\_prefix](#input\_credentials\_secret\_name\_prefix) | The prefix for the AWS Secrets Manager secret name storing Upwind client credentials. Used to create the secret if `UpwindClientId` and `UpwindClientSecret` are provided. | `string` | `"/upwind"` | no |
+| <a name="input_credentials_secret_name_prefix"></a> [credentials\_secret\_name\_prefix](#input\_credentials\_secret\_name\_prefix) | The prefix for the AWS Secrets Manager secret name storing Upwind client credentials. Used to create the secret if the client ID and client secret are provided. | `string` | `"/upwind"` | no |
 | <a name="input_current_account_id"></a> [current\_account\_id](#input\_current\_account\_id) | (Optional). Explicit account ID for AWS account being configured. Provide this when using upwind\_agentless\_k8s\_account\_whitelist so terraform can determine resource creation during plan | `string` | `null` | no |
 | <a name="input_custom_tags"></a> [custom\_tags](#input\_custom\_tags) | Custom tags which shall be applied to each resource created by the module. | `map(string)` | `{}` | no |
-| <a name="input_external_id"></a> [external\_id](#input\_external\_id) | The external ID for secure cross-account role assumption. | `string` | n/a | yes |
-| <a name="input_iam_role_path"></a> [iam\_role\_path](#input\_iam\_role\_path) | The common IAM path applied to all onboarding IAM roles, policies and instance profiles. Must begin and end with a forward slash (/). | `string` | `"/"` | no |
-| <a name="input_install_roles_in_management_account"></a> [install\_roles\_in\_management\_account](#input\_install\_roles\_in\_management\_account) | Install the additional roles in the management account - if required. | `bool` | `false` | no |
-| <a name="input_is_saas"></a> [is\_saas](#input\_is\_saas) | When true, configures the module for Upwind SaaS-managed CloudScanner deployment. In SaaS mode the CloudScanner admin role and credentials secret are not created; instead a customer assume role is created that the Upwind SaaS account can assume. | `bool` | `false` | no |
-| <a name="input_management_account_id"></a> [management\_account\_id](#input\_management\_account\_id) | The account ID of the AWS Organization management account. The Org discover role will be created in this account. | `string` | n/a | yes |
-| <a name="input_orchestrator_account_id"></a> [orchestrator\_account\_id](#input\_orchestrator\_account\_id) | The account ID of the Upwind orchestrator account. If specified, certain roles will only be created in this account to maintain operational security and control. | `string` | `null` | no |
-| <a name="input_organization_role_name"></a> [organization\_role\_name](#input\_organization\_role\_name) | The base name of the IAM role to be created, used for account discovery within the AWS Org. | `string` | `"UpwindOrganizationServiceRole"` | no |
-| <a name="input_organization_role_permissions_boundary"></a> [organization\_role\_permissions\_boundary](#input\_organization\_role\_permissions\_boundary) | (Optional). Permissions boundary policy (ARN or policy name/path) to attach to the Organization discovery role. | `string` | `null` | no |
-| <a name="input_role_name_suffix"></a> [role\_name\_suffix](#input\_role\_name\_suffix) | A user specific suffix that will be appended to resources - eg role names. | `string` | `null` | no |
+| <a name="input_deployment_region"></a> [deployment\_region](#input\_deployment\_region) | Upwind SaaS Region | `string` | `"us"` | no |
+| <a name="input_enable_securityhub_integration"></a> [enable\_securityhub\_integration](#input\_enable\_securityhub\_integration) | Allow the Account Service role to publish Upwind findings into this account's AWS Security Hub (securityhub:BatchImportFindings). | `bool` | `false` | no |
+| <a name="input_external_id"></a> [external\_id](#input\_external\_id) | The external ID for secure cross-account role assumption. This is included in the trusted identity of each role that can be assumed from the Upwind SaaS. | `string` | n/a | yes |
+| <a name="input_iam_role_path"></a> [iam\_role\_path](#input\_iam\_role\_path) | The common IAM Role Path to be used with all IAM role and policies. This maps straight through to the IAM Path property on the IAM roles and policies - i.e. it must begin and end with a forward slash `/` - eg `/security/upwind/`. | `string` | `"/"` | no |
+| <a name="input_install_roles_in_management_account"></a> [install\_roles\_in\_management\_account](#input\_install\_roles\_in\_management\_account) | Controls whether roles, in addition to the Org Discovery role, are created in the management account. If disabled, Upwind is unable to perform audits or scans in the Org Management account. | `bool` | `false` | no |
+| <a name="input_is_saas"></a> [is\_saas](#input\_is\_saas) | Enable CloudScanner SaaS mode, where Upwind runs the CloudScanners. The default orchestrator account then gets the CloudScanner SaaS Customer Assume role, which the Upwind SaaS assumes, instead of the CloudScanner Administration role and credentials secret; additional orchestrator accounts still get the Administration role and secret. | `bool` | `false` | no |
+| <a name="input_is_virtual_organization"></a> [is\_virtual\_organization](#input\_is\_virtual\_organization) | Deploy the Account Service role in Virtual Organization mode, for accounts onboarded together without an AWS Organization. There is then no Org Discovery role, so the Account Service role carries the tags Upwind would otherwise read from it. | `bool` | `false` | no |
+| <a name="input_management_account_id"></a> [management\_account\_id](#input\_management\_account\_id) | The account ID of the AWS Organization management account. The Org Discovery role will be created in this account. | `string` | n/a | yes |
+| <a name="input_orchestrator_account_id"></a> [orchestrator\_account\_id](#input\_orchestrator\_account\_id) | The account ID of the default Upwind orchestrator account. The orchestrator account is considered a "special" account where the CloudScanners will be installed and managed. If specified, additional roles and permissions will be created in this account to allow for the installation and management of the CloudScanners. | `string` | `null` | no |
+| <a name="input_organization_role_name"></a> [organization\_role\_name](#input\_organization\_role\_name) | The name to be given to the Org Discovery IAM role. The Org Discovery role is created in the management account and grants permissions to discover the Organization account structure. | `string` | `"UpwindOrganizationServiceRole"` | no |
+| <a name="input_organization_role_permissions_boundary"></a> [organization\_role\_permissions\_boundary](#input\_organization\_role\_permissions\_boundary) | Optional. A pre-existing IAM permissions boundary policy to attach to the Organization (discovery) role, which is created in the management account. This constrains the maximum permissions the role can have and does not grant any permissions itself - the boundary policy must already exist in that account and must allow the AWS Organizations and CloudFormation permissions the role needs. You may provide either the full policy ARN (e.g. `arn:aws:iam::123456789012:policy/MyBoundary`) or just the policy name including any path but WITHOUT a leading slash (e.g. `MyBoundary` or `team/security/MyBoundary`), in which case the ARN is formed as `arn:<partition>:iam::<this-account-id>:policy/<value>`. Leave unset to create the role without a permissions boundary. | `string` | `null` | no |
+| <a name="input_outpost_only_account_ids"></a> [outpost\_only\_account\_ids](#input\_outpost\_only\_account\_ids) | A list of 12-digit account IDs that must not be scanned using CloudScanner SaaS, because they use an Outpost (customer-hosted) CloudScanner deployment. Only relevant when CloudScanner SaaS is enabled: in these accounts the CloudScanner SaaS Customer Assume role is explicitly denied from assuming the CloudScanner Execution role. The list is also recorded in the onboarding settings. It applies to individual accounts only, not to OUs. Leave empty if no accounts are Outpost-only. | `list(string)` | `[]` | no |
+| <a name="input_role_name_suffix"></a> [role\_name\_suffix](#input\_role\_name\_suffix) | A suffix that will be appended to the role names to ensure they are unique. | `string` | `null` | no |
+| <a name="input_single_account_onboarding_role_permissions_boundary"></a> [single\_account\_onboarding\_role\_permissions\_boundary](#input\_single\_account\_onboarding\_role\_permissions\_boundary) | (Optional). Permissions boundary policy (ARN or policy name/path) to attach to the single account onboarding Lambda execution role. | `string` | `null` | no |
+| <a name="input_ssm_parameter_prefix"></a> [ssm\_parameter\_prefix](#input\_ssm\_parameter\_prefix) | The SSM Parameter Store path prefix under which the onboarding settings are stored in the orchestrator accounts. This should not normally be changed. | `string` | `"/upwind/onboarding/configuration"` | no |
 | <a name="input_upwind_agentless_k8s_access_entries_enabled"></a> [upwind\_agentless\_k8s\_access\_entries\_enabled](#input\_upwind\_agentless\_k8s\_access\_entries\_enabled) | Enable the creation of the policy for agentless Kubernetes resource fetching using EKS access entries as the authentication method. | `bool` | `false` | no |
 | <a name="input_upwind_agentless_k8s_account_whitelist"></a> [upwind\_agentless\_k8s\_account\_whitelist](#input\_upwind\_agentless\_k8s\_account\_whitelist) | (Optional). If set, this will limit the accounts in which the agentless Kubernetes access entry and SSM permissions are created. | `list(string)` | `[]` | no |
-| <a name="input_upwind_agentless_k8s_eks_admin_view_policy_enabled"></a> [upwind\_agentless\_k8s\_eks\_admin\_view\_policy\_enabled](#input\_upwind\_agentless\_k8s\_eks\_admin\_view\_policy\_enabled) | Allow the role to associate AmazonEKSAdminViewPolicy (in addition to AmazonEKSViewPolicy) on Upwind-created access entries. Only takes effect when upwind\_agentless\_k8s\_access\_entries\_enabled is true. | `bool` | `true` | no |
+| <a name="input_upwind_agentless_k8s_eks_admin_view_policy_enabled"></a> [upwind\_agentless\_k8s\_eks\_admin\_view\_policy\_enabled](#input\_upwind\_agentless\_k8s\_eks\_admin\_view\_policy\_enabled) | Allow the role to associate AmazonEKSAdminViewPolicy (in addition to AmazonEKSViewPolicy) on Upwind-created EKS access entries. Only takes effect when agentless Kubernetes resource fetching using access entries is turned on. | `bool` | `true` | no |
 | <a name="input_upwind_agentless_k8s_ssm_enabled"></a> [upwind\_agentless\_k8s\_ssm\_enabled](#input\_upwind\_agentless\_k8s\_ssm\_enabled) | Enable the creation of the policy for agentless Kubernetes resource fetching from private EKS clusters via SSM tunnels. | `bool` | `false` | no |
-| <a name="input_upwind_cfn_bucket"></a> [upwind\_cfn\_bucket](#input\_upwind\_cfn\_bucket) | Hostname of the Upwind S3 bucket that hosts the CloudFormation templates referenced by the account service role policies. | `string` | `"get.upwind.io"` | no |
+| <a name="input_upwind_cfn_bucket"></a> [upwind\_cfn\_bucket](#input\_upwind\_cfn\_bucket) | Optional. The Upwind S3 bucket hosting the CloudFormation templates the account service role policies allow. Defaults to Upwind's bucket for the AWS partition (and environment, see upwind\_dev\_environment) being deployed to. | `string` | `null` | no |
+| <a name="input_upwind_cloud_organization_id"></a> [upwind\_cloud\_organization\_id](#input\_upwind\_cloud\_organization\_id) | The Cloud Organization ID generated by Upwind (not an AWS organization ID). Required when is\_virtual\_organization = true. | `string` | `null` | no |
 | <a name="input_upwind_cloudscanner_auth_client_id"></a> [upwind\_cloudscanner\_auth\_client\_id](#input\_upwind\_cloudscanner\_auth\_client\_id) | The CloudScanner client ID for Upwind Security authentication. | `string` | `null` | no |
-| <a name="input_upwind_cloudscanner_auth_secret_arn"></a> [upwind\_cloudscanner\_auth\_secret\_arn](#input\_upwind\_cloudscanner\_auth\_secret\_arn) | The ARN of the secret containing the CloudScanner credentials. | `string` | `null` | no |
+| <a name="input_upwind_cloudscanner_auth_secret_arn"></a> [upwind\_cloudscanner\_auth\_secret\_arn](#input\_upwind\_cloudscanner\_auth\_secret\_arn) | An ARN for an existing CloudScanner secret can be specified as an alternative to the client ID and client secret on Outpost deployments. If provided, it will be used instead of creating a secret. This needs to be accessible to the CloudScanners which shall be installed in the orchestrator account. For SaaS deployments, this field should remain empty. | `string` | `null` | no |
 | <a name="input_upwind_cloudscanner_auth_secret_value"></a> [upwind\_cloudscanner\_auth\_secret\_value](#input\_upwind\_cloudscanner\_auth\_secret\_value) | The CloudScanner client secret for Upwind Security authentication. | `string` | `null` | no |
-| <a name="input_upwind_cloudscanner_management_enabled"></a> [upwind\_cloudscanner\_management\_enabled](#input\_upwind\_cloudscanner\_management\_enabled) | Enable the permissions necessary to support automated CloudScanner deployment and management. | `bool` | `true` | no |
+| <a name="input_upwind_cloudscanner_management_enabled"></a> [upwind\_cloudscanner\_management\_enabled](#input\_upwind\_cloudscanner\_management\_enabled) | Enable the permissions necessary to support automated CloudScanner deployment and management. If disabled the CloudScanner stacks will need to be installed manually. | `bool` | `true` | no |
+| <a name="input_upwind_dev_environment"></a> [upwind\_dev\_environment](#input\_upwind\_dev\_environment) | Deploy for the Upwind dev environment: the trusted account and template buckets default to the dev environment's for the AWS partition being deployed to, instead of production. | `bool` | `false` | no |
+| <a name="input_upwind_enable_self_managed_kms_key"></a> [upwind\_enable\_self\_managed\_kms\_key](#input\_upwind\_enable\_self\_managed\_kms\_key) | Specify whether to use your own KMS customer managed key (CMK) or an Upwind managed KMS key. | `bool` | `false` | no |
 | <a name="input_upwind_feature_dspm_account_whitelist"></a> [upwind\_feature\_dspm\_account\_whitelist](#input\_upwind\_feature\_dspm\_account\_whitelist) | (Optional). If set, and given upwind\_feature\_dspm\_enabled is true, this will limit the accounts that we create the DSPM S3 permissions in | `list(string)` | `[]` | no |
-| <a name="input_upwind_feature_dspm_enabled"></a> [upwind\_feature\_dspm\_enabled](#input\_upwind\_feature\_dspm\_enabled) | Enable the creation of roles to enable DSPM scanning. This includes permissions to access the the contents of S3 buckets. | `bool` | `true` | no |
-| <a name="input_upwind_include_ec2_network_management_permissions"></a> [upwind\_include\_ec2\_network\_management\_permissions](#input\_upwind\_include\_ec2\_network\_management\_permissions) | Include permissions necessary to create and manage EC2 network resources. | `bool` | `true` | no |
-| <a name="input_upwind_trusted_account_id"></a> [upwind\_trusted\_account\_id](#input\_upwind\_trusted\_account\_id) | The identifier of the trusted account used for IAM cross-account access. | `string` | `"340457201789"` | no |
+| <a name="input_upwind_feature_dspm_enabled"></a> [upwind\_feature\_dspm\_enabled](#input\_upwind\_feature\_dspm\_enabled) | Enable the creation of roles to enable DSPM scanning. This includes permissions to access the contents of S3 buckets. | `bool` | `true` | no |
+| <a name="input_upwind_feature_dspm_rds_account_allowlist"></a> [upwind\_feature\_dspm\_rds\_account\_allowlist](#input\_upwind\_feature\_dspm\_rds\_account\_allowlist) | (Optional). If set, and given upwind\_feature\_dspm\_rds\_enabled is true, this limits the accounts that we create the DSPM RDS permissions in. | `list(string)` | `[]` | no |
+| <a name="input_upwind_feature_dspm_rds_enabled"></a> [upwind\_feature\_dspm\_rds\_enabled](#input\_upwind\_feature\_dspm\_rds\_enabled) | Enable DSPM scanning of RDS databases. This includes the permissions required to snapshot and restore RDS databases so their contents can be scanned. | `bool` | `false` | no |
+| <a name="input_upwind_include_ec2_network_management_permissions"></a> [upwind\_include\_ec2\_network\_management\_permissions](#input\_upwind\_include\_ec2\_network\_management\_permissions) | Include the permissions necessary to create and manage EC2 network resources. If providing custom networking configuration from the start, this can be omitted. Note: CloudScanners will not be installed until the necessary network configuration has been provided. | `bool` | `true` | no |
+| <a name="input_upwind_serverless_bucket_prefix"></a> [upwind\_serverless\_bucket\_prefix](#input\_upwind\_serverless\_bucket\_prefix) | Bucket that stores the single account onboarding lambda only used for upwind managed orgs | `string` | `"upwind-serverless-functions"` | no |
+| <a name="input_upwind_single_account_onboarding_lambda_enabled"></a> [upwind\_single\_account\_onboarding\_lambda\_enabled](#input\_upwind\_single\_account\_onboarding\_lambda\_enabled) | Whether to create the single account onboarding Lambda (and its supporting IAM role, secret and log group). Only applies when is\_virtual\_organization = true. | `bool` | `true` | no |
+| <a name="input_upwind_trusted_account_id"></a> [upwind\_trusted\_account\_id](#input\_upwind\_trusted\_account\_id) | The account id to be configured as the trusted principal: the account Upwind will assume the roles from. Defaults to Upwind's account for the AWS partition (and environment, see upwind\_dev\_environment) being deployed to. | `string` | `null` | no |
 ## Resources
 
 | Name | Type |
 |------|------|
+| [aws_iam_policy.cloudscanner_dspm_rds](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy) | resource |
+| [aws_iam_policy.cloudscanner_dspm_rds_execution](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy) | resource |
+| [aws_iam_role_policy_attachment.cloudscanner_admin_role_dspm_rds](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
+| [aws_iam_role_policy_attachment.cloudscanner_execution_role_dspm_rds](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
+| [aws_ssm_parameter.cloudscanner_settings](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_parameter) | resource |
 | [null_resource.validate_cloudscanner_auth](https://registry.terraform.io/providers/hashicorp/null/latest/docs/resources/resource) | resource |
 | [null_resource.validate_management_account](https://registry.terraform.io/providers/hashicorp/null/latest/docs/resources/resource) | resource |
+| [null_resource.validate_orchestrator_accounts](https://registry.terraform.io/providers/hashicorp/null/latest/docs/resources/resource) | resource |
 | [null_resource.validate_saas_config](https://registry.terraform.io/providers/hashicorp/null/latest/docs/resources/resource) | resource |
+| [null_resource.validate_virtual_organization](https://registry.terraform.io/providers/hashicorp/null/latest/docs/resources/resource) | resource |
 | [aws_caller_identity.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/caller_identity) | data source |
+| [aws_partition.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/partition) | data source |
 <!-- END_TF_DOCS -->
+
+## Upgrade notes
+These notes cover upgrading from 4.x to 5.0.
+
+### AWS provider 6
+The module now requires the AWS provider `>= 6.0` (previously `>= 5.32`): it reads the region from the `region`
+attribute of the `aws_region` data source, which replaces the deprecated `name`. If your configuration pins the AWS
+provider to 5.x, upgrade it (see the provider's
+[version 6 upgrade guide](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/guides/version-6-upgrade))
+before upgrading this module.
+
+### Onboarding settings, additional orchestrator accounts and DSPM RDS
+This release brings the module in line with the Upwind CloudFormation (v3) onboarding templates.
+
+New inputs (all optional; the defaults keep a single orchestrator account):
+* `additional_orchestrator_account_ids`: further orchestrator accounts alongside `orchestrator_account_id`, which
+  remains required. The CloudScanner admin role, credentials secret and onboarding settings are also created in these
+  accounts, and the CloudScanner Execution role in every account trusts their CloudScanner admin role. In SaaS mode
+  the default orchestrator account gets the onboarding settings and the customer assume role but no CloudScanner
+  admin role or credentials secret; the additional orchestrator accounts get all three.
+* `outpost_only_account_ids`: in SaaS mode, accounts the Upwind SaaS CloudScanners must not scan (the customer assume
+  role is denied the CloudScanner Execution role there).
+* `ssm_parameter_prefix`: the SSM Parameter Store path of the onboarding settings (default
+  `/upwind/onboarding/configuration`, plus `/<role_name_suffix>` when a suffix is set).
+* `cloudscanner_dspm_rds_execution_policy_name`: the base name of the new DSPM RDS policy for the CloudScanner
+  Execution role (default `UpwindCloudScannerDspmRdsExecutionPolicy`).
+* `cloudscanner_dspm_rds_policy_name`: the base name of the DSPM RDS policy for the CloudScanner admin role (default
+  `UpwindCloudScannerDspmRdsPolicy`, the name used so far). Must differ from
+  `cloudscanner_dspm_rds_execution_policy_name`.
+* `cloudscanner_saas_customer_assume_role_permissions_boundary`: an optional permissions boundary (policy ARN, or name
+  and path) for the CloudScanner SaaS customer assume role, as for the other roles' boundaries.
+
+Upgrade order and region:
+* Apply the orchestrator accounts (default and additional), which create the onboarding settings parameter, **before**
+  the management account. The upgraded Organization Discovery role gets the `upwind:aws:SSMParameterPrefix` tag, and
+  from then on Upwind reads the onboarding settings from that parameter; until the parameter exists, discovery of the
+  orchestrator accounts fails (settings not found).
+* Apply every account with the same AWS provider region as the management account. The region in the
+  `upwind:aws:SSMParameterPrefix` tag comes from the management account's provider, while the parameter is created in
+  the region of each orchestrator account's apply; if they differ, Upwind does not find the parameter.
+
+Changes on upgrade:
+* Each orchestrator account gets a new SSM parameter, `<ssm_parameter_prefix>[/<role_name_suffix>]/settings1`, holding the
+  onboarding settings (secret ARN, role names, instance profile, feature flags, additional orchestrator and Outpost-only
+  accounts). The Account Service role can read it. The roles carry the v3 discovery tags (see below).
+* DSPM RDS (only when `upwind_feature_dspm_rds_enabled = true`): the CloudScanner Execution role now gets its own
+  least-privilege policy, `UpwindCloudScannerDspmRdsExecutionPolicy`, in place of the shared
+  `UpwindCloudScannerDspmRdsPolicy`. The shared policy stays attached to the CloudScanner admin role; as in the
+  CloudFormation templates, it is also still created, unattached, in the other accounts. The attachment
+  `aws_iam_role_policy_attachment.cloudscanner_execution_role_dspm_rds` is therefore **replaced** (detached and
+  re-attached) on upgrade. This is the only replacement; every other change is an in-place update or an addition.
+* CloudScanner admin role: its Secrets Manager permissions move from the operational and scaler policies into a new
+  inline policy, `CloudScannerSecretsAccessPolicy` (the same permissions, granted once). `iam:PassRole` /
+  `iam:GetRole` on the CloudScanner admin role now name the role in the account itself; in an additional
+  orchestrator account they previously named the default orchestrator account's role, which a role cannot pass.
+* DSPM RDS tagging is narrowed: `rds:AddTagsToResource` is now allowed only on RDS instances, clusters and snapshots
+  named `cloudscanner-dspm-*` (previously any in the account, when the request set the `UpwindComponent` tag).
+* Discovery tags follow the v3 CloudFormation templates. Tags removed:
+  * Organization Discovery role: `upwind:aws:CloudScannerAdministrationRoleProfileName`,
+    `upwind:aws:CloudScannerExecutionRoleName`, `upwind:aws:HasDSPMPermissions`, `upwind:aws:HasDSPMRDSPermissions`,
+    `upwind:aws:HasCSAutomationPermissions`, and the duplicates `upwind::AccountServiceRoleName`,
+    `upwind::CloudScannerAdministrationRoleName`, `upwind::CloudScannerExecutionRoleName` and
+    `upwind::OrchestratorAccountId`.
+  * Account Service role: `upwind:aws:CloudScannerExecutionRoleName`, `upwind:aws:CloudScannerInstallRegion`,
+    `upwind:aws:CloudScannerSecretARN`, `upwind:aws:HasCSAutomationPermissions` and
+    `upwind:aws:HasCSEC2NetworkPermissions`; outside virtual organizations also `upwind:aws:CloudScannerSaaSMode`,
+    `upwind:aws:CloudScannerAdministrationRoleName` and `upwind:aws:CustomerAssumeRoleName`.
+  * CloudScanner Execution role: `upwind:aws:OnboardingType`, `upwind:aws:DSPMRDSEnabled` and
+    `upwind:aws:DSPMRDSEnabledAccount`.
+* Tags added or changed:
+  * Organization Discovery role: new `upwind:aws:SSMParameterPrefix` (the ARN prefix of the onboarding settings
+    parameter). `upwind:aws:AccountServiceRoleName`, `upwind:aws:CloudScannerAdministrationRoleName` and
+    `upwind:aws:CustomerAssumeRoleName` now always include the IAM path (`/UpwindAccountServiceRole` with the default
+    path, previously `UpwindAccountServiceRole`). `upwind:aws:OrchestratorAccountId` also lists the additional
+    orchestrator accounts, `:`-separated. `upwind:aws:CloudScannerAdministrationRoleName` is set only outside SaaS
+    mode, `upwind:aws:CustomerAssumeRoleName` only in SaaS mode.
+  * Account Service role: `upwind:aws:HasDSPMPermissions`, `upwind:aws:HasDSPMRDSPermissions` and
+    `upwind:aws:HasSelfManagedKMSKey` are now set in every account (previously only the orchestrator account), and the
+    DSPM ones follow the DSPM account allowlists.
+  * Account Service role in a virtual organization: it carries the discovery tags of the v3 Organization Discovery
+    role. New `upwind:aws:SSMParameterPrefix`; `upwind:aws:AccountServiceRoleName`,
+    `upwind:aws:CloudScannerAdministrationRoleName` and `upwind:aws:CustomerAssumeRoleName` include the IAM path;
+    `upwind:aws:OrchestratorAccountId` also lists the additional orchestrator accounts. With an orchestrator account
+    set, `upwind:aws:CloudScannerAdministrationRoleName` is set outside SaaS mode and
+    `upwind:aws:CustomerAssumeRoleName` in SaaS mode, in every account.
+* The internal sub-modules drop inputs they no longer use: `iam_org_discovery_role` (`cloudscanner_admin_role_profile_name`,
+  `cloudscanner_execution_role_name`, `upwind_feature_dspm_enabled`, `upwind_feature_dspm_rds_enabled`,
+  `upwind_cloudscanner_management_enabled`) and `iam_cloudscanner_execution_role` (`upwind_feature_dspm_rds_enabled`,
+  `upwind_feature_dspm_rds_account_allowlist`). `iam_org_discovery_role` and `iam_account_service_role` take
+  `trusted_account_id` (the 12-digit Upwind account) in place of `trusted_arn`. The root module's inputs are unchanged.
+* Trust policies name the trusted accounts by account ID rather than by their `arn:<partition>:iam::<account>:root`
+  ARN; IAM treats the two as the same, so existing roles are not changed.
+* The CloudScanner SaaS customer assume role gains the `upwind:aws:HasDSPMPermissions`,
+  `upwind:aws:HasDSPMRDSPermissions` and `upwind:aws:CloudScannerExecutionRoleName` tags, and the CloudScanner
+  credentials secret gains a description. Both are updated in place.
+* With DSPM RDS enabled, the VPC (elastic network interface) permissions of the DSPM RDS scanning lambda move from
+  the managed policy `UpwindCloudScannerDspmRdsVpcAccessPolicy` (removed, with its attachment) to the inline policy
+  `DspmRdsExecutorVpcEniPolicy` on the CloudScanner admin role.
+* The CloudScanner Execution role's `upwind:aws:DSPMEnabled` and `upwind:aws:DSPMEnabledAccount` tags change from
+  `true`/`false` to `Yes`/`No`, like the role tags' other flags. They are updated in place.
+* Some permissions that existing installations have are **removed**, to match the CloudFormation templates:
+  * Account Service role: `AccessAppSync` (`appsync:ListGraphqlApis`, `appsync:GetGraphqlApi`),
+    `AccessIdentityStoreAuth` (`identitystore-auth:BatchGetSession`, `identitystore-auth:ListSessions`) and
+    `AccessLogs` (`logs:GetLogEvents`) in the view policy; in the orchestrator account, `AccessIAMInstanceProfile` and
+    `AutoscalingServiceLinkedRoleUsagePolicy` (`iam:AttachRolePolicy` / `iam:PutRolePolicy` on the autoscaling
+    service-linked role).
+  * CloudScanner admin role: `autoscaling:*` / `ec2:*` on CloudScanner-tagged Auto Scaling groups and launch templates
+    and an `s3:GetObject` on the serverless bucket (operational policy); `ec2:DescribeFleetInstances`,
+    `autoscaling:DescribeAutoScalingGroups` and `kms:Decrypt` (snapshotter policy). `autoscaling:*` on CloudScanner
+    Auto Scaling groups is narrowed to an explicit list of actions.
+  * CloudScanner Execution role: `ec2:DescribeFleetInstances` and `autoscaling:DescribeAutoScalingGroups`; with DSPM RDS,
+    the RDS restore, instance/cluster modify and delete, instance/cluster tagging and `rds-db:connect` permissions
+    (these stay on the CloudScanner admin role). The Execution role now copies only its own account's snapshots, and
+    only those already tagged `UpwindComponent=CloudScanner`.
+
+### CloudScanner SaaS trusted account
+**Breaking:** with `is_saas = true`, `cloudscanner_saas_trusted_account_id` is now required. It previously fell back
+to `upwind_trusted_account_id` when unset, which configured the CloudScanner SaaS customer assume role to trust the
+wrong Upwind account, so the SaaS CloudScanners could not assume it. A plan with `is_saas = true` and no
+`cloudscanner_saas_trusted_account_id` now fails with an error; set it to the Upwind SaaS account ID Upwind provides.
+Installations that already set it are unaffected.
+
+### AWS partitions
+The module supports the commercial (`aws`), China (`aws-cn`) and GovCloud (`aws-us-gov`) partitions. The values that
+differ by partition (the Upwind trusted and publishing accounts, the Upwind templates bucket and its URLs) follow the
+partition of the AWS provider, and the KMS `kms:ViaService` and `aws:CalledVia` conditions use the partition's DNS
+suffix. In China, CloudScanner workers download their artifacts with signed requests, so the CloudScanner admin role
+also gets `s3:GetObject` on the Upwind distribution buckets there.
+
+`upwind_trusted_account_id` and `upwind_cfn_bucket` now default to `null`, meaning Upwind's account and templates
+bucket for the partition. In the commercial partition this is the same as the previous defaults (`340457201789`,
+`get.upwind.io`). Leave them unset unless Upwind asks you to set them.
+
+The new `upwind_dev_environment` input (default `false`) points the module at the Upwind dev environment: it selects
+the dev environment's trusted account and templates bucket for the partition in one setting, in place of setting
+`upwind_trusted_account_id` and `upwind_cfn_bucket`. Those two still override it when set.
